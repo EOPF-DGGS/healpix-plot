@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
     import affine
 
+    from healpix_plotting.healpix import HealpixGrid
+
 
 class SamplingGridParameters(TypedDict):
     """Sampling parameters as a dict
@@ -31,30 +33,117 @@ class SamplingGridParameters(TypedDict):
     center: tuple[float, float] | None = None
 
 
-@dataclass
 class SamplingGrid:
-    """materialized sampling grid"""
+    def resolve(
+        self, cell_ids: np.ndarray, parameters: HealpixGrid
+    ) -> ConcreteSamplingGrid:
+        raise NotImplementedError
 
-    x: np.ndarray
-    y: np.ndarray
 
-    @classmethod
-    def from_transform(cls, transform: affine.Affine) -> Self:
-        pass
+def _infer_parameters(
+    grid: ParametrizedSamplingGrid, cell_ids: np.ndarray, params: HealpixGrid
+) -> (tuple[int, int], tuple[float, float], tuple[float, float]):
+    # TODO: actually resolve the parameters
+    return grid.shape, grid.resolution, grid.center
+
+
+@dataclass
+class ParametrizedSamplingGrid:
+    shape: tuple[int, int]
+    resolution: tuple[float, float] | None
+    center: tuple[float, float] | None
 
     @classmethod
     def from_parameters(
         cls,
-        shape: tuple[int, int],
-        resolution: tuple[float, float],
-        center: tuple[float, float],
+        shape: int | tuple[int, int],
+        resolution: float | tuple[float, float] | None = None,
+        center: tuple[float, float] | None = None,
     ) -> Self:
-        pass
+        if isinstance(shape, int):
+            shape = (shape, shape)
+        if isinstance(resolution, float):
+            resolution = (resolution, resolution)
 
-    @classmethod
-    def from_bbox(cls, bbox: tuple[float, float, float, float]) -> Self:
-        pass
+        return cls(shape=shape, resolution=resolution, center=center)
 
     @classmethod
     def from_dict(cls, mapping: SamplingGridParameters) -> Self:
-        pass
+        return cls.from_parameters(**mapping)
+
+    @classmethod
+    def from_bbox(
+        cls,
+        bbox: tuple[float, float, float, float],
+        shape: int | tuple[int, int],
+    ) -> Self:
+        if isinstance(shape, int):
+            shape = (shape, shape)
+
+        xmin, ymin, xmax, ymax = bbox
+
+        center = (float(np.mean([xmin, xmax])), float(np.mean([ymin, ymax])))
+
+        resolution = (
+            (xmax - xmin) / (shape[0] - 1),
+            (ymax - ymin) / (shape[1] - 1),
+        )
+
+        return cls(shape=shape, center=center, resolution=resolution)
+
+    def resolve(
+        self, cell_ids: np.ndarray, parameters: HealpixGrid
+    ) -> ConcreteSamplingGrid:
+        shape, resolution, center = _infer_parameters(self, cell_ids, parameters)
+
+        size_x, size_y = shape
+        half_x = resolution[0] * size_x / 2
+        half_y = resolution[1] * size_y / 2
+        center_x, center_y = center
+
+        xs = (
+            np.linspace(-half_x, +half_x, size_x, endpoint=False)
+            + (half_x / size_x)
+            + center_x
+        )
+        ys = (
+            np.linspace(-half_y, +half_y, size_y, endpoint=False)
+            + (half_y / size_y)
+            + center_y
+        )
+
+        x, y = np.meshgrid(xs, ys)
+
+        return ConcreteSamplingGrid(x, y)
+
+
+@dataclass
+class AffineSamplingGrid(SamplingGrid):
+    transform: affine.Affine
+    shape: tuple[int, int]
+
+    @classmethod
+    def from_transform(
+        cls,
+        transform: affine.Affine,
+        shape: int | tuple[int, int],
+    ) -> Self:
+        if isinstance(shape, int):
+            shape = (shape, shape)
+
+        return cls(transform, shape)
+
+    def resolve(
+        self, cell_ids: np.ndarray, parameters: HealpixGrid
+    ) -> ConcreteSamplingGrid:
+        pixel_x, pixel_y = np.mgrid[: self.shape[0], : self.shape[1]]
+
+        x, y = self.transform * (pixel_x, pixel_y)
+
+        return ConcreteSamplingGrid(x, y)
+
+
+@dataclass
+class ConcreteSamplingGrid:
+    x: np.ndarray
+    y: np.ndarray
