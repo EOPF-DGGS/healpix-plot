@@ -36,7 +36,7 @@ class SamplingGridParameters(TypedDict):
 class SamplingGrid:
     def resolve(
         self, cell_ids: np.ndarray, parameters: HealpixGrid
-    ) -> ConcreteSamplingGrid:
+    ) -> ConcreteSamplingGrid:  # pragma: no cover
         raise NotImplementedError
 
 
