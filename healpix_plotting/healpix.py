@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import healpix_geo
 
@@ -9,6 +9,12 @@ if TYPE_CHECKING:
     from typing import Literal
 
     from healpix_plotting.ellipsoid import EllipsoidLike
+
+
+class HealpixGridParameters(TypedDict):
+    level: int
+    indexing_scheme: Literal["nested", "ring", "zuniq"]
+    ellipsoid: EllipsoidLike
 
 
 @dataclass
