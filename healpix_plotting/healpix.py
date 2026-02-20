@@ -23,6 +23,11 @@ class HealpixGrid:
         if self.indexing_scheme not in known_schemes:
             raise ValueError(f"unknown indexing scheme: {self.indexing_scheme}")
 
+        if self.level not in range(0, 29 + 1):
+            raise ValueError(
+                f"level is outside the valid range of [0, 29]: {self.level}"
+            )
+
     def as_keyword_params(self):
         return {"depth": self.level, "ellipsoid": self.ellipsoid}
 
