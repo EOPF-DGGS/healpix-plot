@@ -44,7 +44,27 @@ def _infer_parameters(
     grid: ParametrizedSamplingGrid, cell_ids: np.ndarray, params: HealpixGrid
 ) -> (tuple[int, int], tuple[float, float], tuple[float, float]):
     # TODO: actually resolve the parameters
-    return grid.shape, grid.resolution, grid.center
+    center = grid.center
+    shape = grid.shape
+    resolution = grid.resolution
+    if resolution is None or center is None:
+        lon, lat = params.operations.healpix_to_lonlat(
+            cell_ids, **params.as_keyword_params()
+        )
+        if center is None:
+            center = (np.mean(lon).item(), np.mean(lat).item())
+
+        if resolution is None:
+            size_x, size_y = shape
+            min_x, max_x = np.min(lon).item(), np.max(lon).item()
+            min_y, max_y = np.min(lat).item(), np.max(lat).item()
+
+            dx = (max_x - min_x) / (size_x - 1)
+            dy = (max_y - min_y) / (size_y - 1)
+
+            resolution = (dx, dy)
+
+    return shape, resolution, center
 
 
 @dataclass
