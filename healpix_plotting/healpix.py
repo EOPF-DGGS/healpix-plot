@@ -22,7 +22,7 @@ class HealpixGrid:
     # FIXME: move the grid info objects out of `xdggs` and use that?
     level: int
     indexing_scheme: Literal["nested", "ring", "zuniq"]
-    ellipsoid: EllipsoidLike
+    ellipsoid: EllipsoidLike = "sphere"
 
     def __post_init__(self):
         known_schemes = ["nested", "ring", "zuniq"]
