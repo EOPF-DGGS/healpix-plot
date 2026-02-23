@@ -4,11 +4,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
+from affine import Affine
 
 if TYPE_CHECKING:
     from typing import Self
-
-    import affine
 
     from healpix_plotting.healpix import HealpixGrid
 
@@ -134,18 +133,21 @@ class ParametrizedSamplingGrid:
 
         x, y = np.meshgrid(xs, ys)
 
-        return ConcreteSamplingGrid(x, y)
+        extent_x = (center_x - half_x, center_x + half_x)
+        extent_y = (center_y - half_y, center_y + half_y)
+
+        return ConcreteSamplingGrid(x, y, extent_x, extent_y)
 
 
 @dataclass
 class AffineSamplingGrid(SamplingGrid):
-    transform: affine.Affine
+    transform: Affine
     shape: tuple[int, int]
 
     @classmethod
     def from_transform(
         cls,
-        transform: affine.Affine,
+        transform: Affine,
         shape: int | tuple[int, int],
     ) -> Self:
         if isinstance(shape, int):
@@ -153,14 +155,28 @@ class AffineSamplingGrid(SamplingGrid):
 
         return cls(transform, shape)
 
+    @property
+    def center_transform(self):
+        return self.transform
+
+    @property
+    def corner_transform(self):
+        return self.transform * Affine.translation(-0.5, -0.5)
+
     def resolve(
         self, cell_ids: np.ndarray, parameters: HealpixGrid
     ) -> ConcreteSamplingGrid:
-        pixel_x, pixel_y = np.mgrid[: self.shape[0], : self.shape[1]]
+        pixel_y, pixel_x = np.mgrid[: self.shape[1], : self.shape[0]]
 
-        x, y = self.transform * (pixel_x, pixel_y)
+        x, y = self.center_transform * (pixel_x, pixel_y)
 
-        return ConcreteSamplingGrid(x, y)
+        xmin, ymin = self.corner_transform * (0, 0)
+        xmax, ymax = self.corner_transform * self.shape
+
+        extent_x = (xmin, xmax)
+        extent_y = (ymin, ymax)
+
+        return ConcreteSamplingGrid(x, y, extent_x, extent_y)
 
 
 @dataclass
@@ -168,6 +184,13 @@ class ConcreteSamplingGrid:
     x: np.ndarray
     y: np.ndarray
 
+    extent_x: tuple[float, float]
+    extent_y: tuple[float, float]
+
     @property
     def shape(self):
         return self.x.shape
+
+    @property
+    def extent(self):
+        return self.extent_x + self.extent_y
