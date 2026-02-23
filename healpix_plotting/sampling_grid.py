@@ -42,7 +42,7 @@ class SamplingGrid:
 def _infer_parameters(
     grid: ParametrizedSamplingGrid, cell_ids: np.ndarray, params: HealpixGrid
 ) -> (tuple[int, int], tuple[float, float], tuple[float, float]):
-    # TODO: actually resolve the parameters
+    # TODO: figure out how to deal with the difference between source and target grid
     center = grid.center
     shape = grid.shape
     resolution = grid.resolution
