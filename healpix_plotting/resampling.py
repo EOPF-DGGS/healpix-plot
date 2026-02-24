@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def is_rgb(x):
-    return x.ndim == 3 and x.shape[-1] in (3, 4)
+    return x.ndim == 2 and x.shape[-1] in (3, 4)
 
 
 def nearest_neighbour_resampling(
@@ -92,7 +92,7 @@ def resample(
     source_cell_ids, inverse_indices = np.unique(
         cell_ids, sorted=True, return_inverse=True
     )
-    deduplicated = numpy_groupies.aggregate(inverse_indices, data, func=agg)
+    deduplicated = numpy_groupies.aggregate(inverse_indices, data, func=agg, axis=0)
 
     # interpolation
     return target_grid, interpolator(
