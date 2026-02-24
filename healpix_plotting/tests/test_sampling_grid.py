@@ -6,6 +6,71 @@ from healpix_plotting import sampling_grid as sg
 from healpix_plotting.healpix import HealpixGrid
 
 
+@pytest.mark.parametrize(
+    ["shape", "resolution", "center", "expected_resolution", "expected_center"],
+    (
+        pytest.param(
+            (15, 7),
+            (0.5, 1.2),
+            (9.5, 10.0),
+            (0.5, 1.2),
+            (9.5, 10.0),
+        ),
+        pytest.param(
+            (7, 5),
+            None,
+            (10.0, 10.0),
+            (1.875, 3.590377890729141),
+            (10.0, 10.0),
+        ),
+        pytest.param(
+            (7, 5),
+            (0.5, 0.5),
+            None,
+            (0.5, 0.5),
+            (11.25, 0.0),
+        ),
+    ),
+)
+def test_infer_parameters(
+    shape, resolution, center, expected_resolution, expected_center
+):
+    healpix_params = HealpixGrid(level=4, indexing_scheme="nested", ellipsoid="sphere")
+    cell_ids = np.array(
+        [
+            1079,
+            1099,
+            1120,
+            1121,
+            1122,
+            1123,
+            1124,
+            1126,
+            1127,
+            1128,
+            1129,
+            1131,
+            1132,
+            1133,
+            1134,
+            1135,
+            1144,
+            1220,
+        ],
+        dtype="uint64",
+    )
+    grid = sg.ParametrizedSamplingGrid(
+        shape=shape, resolution=resolution, center=center
+    )
+    actual_shape, actual_resolution, actual_center = sg._infer_parameters(
+        grid, cell_ids, healpix_params
+    )
+
+    assert actual_shape == shape
+    assert actual_resolution == pytest.approx(expected_resolution)
+    assert actual_center == pytest.approx(expected_center)
+
+
 class TestParametrizedSamplingGrid:
     @pytest.mark.parametrize(
         ["shape", "expected_shape"], ((3, (3, 3)), ((2, 5), (2, 5)))
