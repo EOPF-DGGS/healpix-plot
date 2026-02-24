@@ -166,9 +166,6 @@ def plot(
     if title is not None:
         ax.set_title(title)
 
-    ax.set_xmargin(0.05)
-    ax.set_ymargin(0.10)
-
     if colorbar:
         colorbar_kwargs = colorbar if isinstance(colorbar, dict) else {}
         ax.figure.colorbar(mappable, **colorbar_kwargs)
