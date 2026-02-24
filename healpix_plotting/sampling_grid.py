@@ -116,8 +116,8 @@ class ParametrizedSamplingGrid:
         shape, resolution, center = _infer_parameters(self, cell_ids, parameters)
 
         size_x, size_y = shape
-        half_x = resolution[0] * size_x / 2
-        half_y = resolution[1] * size_y / 2
+        half_x = resolution[0] * (size_x + 1) / 2
+        half_y = resolution[1] * (size_y + 1) / 2
         center_x, center_y = center
 
         xs = (
@@ -133,10 +133,10 @@ class ParametrizedSamplingGrid:
 
         x, y = np.meshgrid(xs, ys)
 
-        xmin = np.min(xs) - half_x / size_x
-        xmax = np.max(xs) - half_x / size_x
-        ymin = np.min(ys) - half_y / size_y
-        ymax = np.max(ys) - half_y / size_y
+        xmin = np.clip(np.min(xs).item(), 0, 360)
+        xmax = np.clip(np.max(xs).item(), 0, 360)
+        ymin = np.clip(np.min(ys).item(), -90, 90)
+        ymax = np.clip(np.max(ys).item(), -90, 90)
 
         extent_x = (xmin, xmax)
         extent_y = (ymin, ymax)
