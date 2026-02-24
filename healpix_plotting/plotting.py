@@ -148,6 +148,9 @@ def plot(
             layout="constrained",
         )
 
+    # set extent before plotting for a smoother image
+    # See https://github.com/SciTools/cartopy/issues/1468
+    ax.set_extent(target_grid.extent, crs=ccrs.PlateCarree())
     mappable = ax.imshow(
         image,
         extent=target_grid.extent,
@@ -160,7 +163,6 @@ def plot(
         cmap=cmap,
         transform=ccrs.PlateCarree(),
     )
-    ax.set_extent(target_grid.extent, crs=ccrs.PlateCarree())
     if title is not None:
         ax.set_title(title)
 
