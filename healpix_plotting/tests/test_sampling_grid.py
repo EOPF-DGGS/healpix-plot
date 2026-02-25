@@ -138,7 +138,7 @@ class TestParametrizedSamplingGrid:
                         0.0 + 1.0 * np.arange(-2, 3),
                     ),
                     axis=0,
-                ),
+                )[::-1, ...],
             ),
             pytest.param(
                 (15, 7),
@@ -146,11 +146,11 @@ class TestParametrizedSamplingGrid:
                 (9.5, 10.0),
                 np.stack(
                     np.meshgrid(
-                        10.0 + 1.2 * np.arange(-3, 4),
                         9.5 + 0.5 * np.arange(-7, 8),
+                        10.0 + 1.2 * np.arange(-3, 4),
                     ),
                     axis=0,
-                ),
+                )[::-1, ...],
             ),
         ),
     )
