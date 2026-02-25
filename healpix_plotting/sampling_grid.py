@@ -198,4 +198,5 @@ class ConcreteSamplingGrid:
 
     @property
     def extent(self):
-        return self.extent_x + self.extent_y
+        extent_x = tuple((x + 180) % 360 - 180 for x in self.extent_x)
+        return extent_x + self.extent_y
