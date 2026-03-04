@@ -43,4 +43,3 @@ Complete documentation for every public function and class.
 :::
 
 ::::
-

@@ -13,9 +13,9 @@ kernelspec:
 
 This guide shows how to plot a HEALPix dataset in three steps:
 
-1. Define the grid  
-2. Create `cell_ids` and associated data  
-3. Plot the map  
+1. Define the grid
+2. Create `cell_ids` and associated data
+3. Plot the map
 
 ## Setup
 
@@ -59,14 +59,24 @@ print(f"value range: [{data.min():.2f}, {data.max():.2f}]")
 ## Step 3 — plot
 
 ```{code-cell} python
-fig, ax = plt.subplots(1, 1, subplot_kw={"projection": ccrs.Mollweide()},figsize=(12,12))
+fig, ax = plt.subplots(
+    1, 1, subplot_kw={"projection": ccrs.Mollweide()}, figsize=(12, 12)
+)
 
-mappable = healpix_plotting.plot(cell_ids, data, 
-                                 healpix_grid={"level": child_level, "indexing_scheme": "nested", "ellipsoid":"WGS84"}, 
-                                 sampling_grid={"shape": 400},ax=ax)
+mappable = healpix_plotting.plot(
+    cell_ids,
+    data,
+    healpix_grid={
+        "level": child_level,
+        "indexing_scheme": "nested",
+        "ellipsoid": "WGS84",
+    },
+    sampling_grid={"shape": 400},
+    ax=ax,
+)
 
 fig.colorbar(mappable, orientation="horizontal")
-ax= mappable.figure.axes[0]
+ax = mappable.figure.axes[0]
 
 ax.coastlines()
 ax.gridlines(draw_labels="x")
@@ -75,7 +85,8 @@ ax.gridlines(draw_labels="y")
 plt.show()
 ```
 
-## Result 
+## Result
+
 You now have a global HEALPix map rendered on a Mollweide projection.
 
 The plotting function:
@@ -83,4 +94,3 @@ The plotting function:
 - resamples HEALPix cells to a regular grid
 - interpolates values
 - renders the image on a Cartopy projection
-
