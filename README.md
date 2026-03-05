@@ -55,7 +55,6 @@ Because the library rasterises via nearest-neighbour resampling, it does **not**
 
 ---
 
-
 ## `HealpixGrid`
 
 ```python
