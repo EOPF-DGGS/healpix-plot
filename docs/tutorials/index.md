@@ -9,3 +9,11 @@
 Install, understand the two core objects, make your first map.
 :::
 ::::
+
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+quickstart
+```

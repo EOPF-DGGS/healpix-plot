@@ -4,7 +4,7 @@ The sampling grid defines the regular pixel grid onto which HEALPix data is resa
 
 Three ways to define the target raster:
 
-### 1. Parametrised (dict or `ParametrizedSamplingGrid`)
+## 1. Parametrised (dict or `ParametrizedSamplingGrid`)
 
 Pass a dict to `sampling_grid`. Recognised keys:
 
@@ -20,7 +20,7 @@ sampling_grid = {"shape": (2048, 1024), "center": (0.0, 0.0)}
 
 The spatial extent and pixel resolution are inferred automatically from the bounding box of your `cell_ids`.
 
-### 2. Bounding box (`ParametrizedSamplingGrid.from_bbox`)
+## 2. Bounding box (`ParametrizedSamplingGrid.from_bbox`)
 
 Use `SamplingGrid.from_bbox()` to pin the output to a fixed region regardless of the data:
 
@@ -33,7 +33,7 @@ sampling_grid = healpix_plotting.SamplingGrid.from_bbox(
 
 This is the right choice when comparing multiple datasets or animating over time.
 
-### 3. Affine transform (`AffineSamplingGrid`)
+## 3. Affine transform (`AffineSamplingGrid`)
 
 Use `AffineSamplingGrid` when the output pixels must align with a reference raster (e.g. a GeoTIFF):
 

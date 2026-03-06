@@ -90,7 +90,22 @@ html_theme_options = {
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "sphinx": ("https://www.sphinx-doc.org/en/stable/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "cartopy": ("https://scitools.org.uk/cartopy/docs/v0.22/", None),
 }
+
+# Suppress warnings for unresolvable cross-references (dataclass attributes,
+# external types not covered by intersphinx)
+nitpick_ignore_regex = [
+    (r"py:.*", r"healpix_plotting\..*"),   # generated autosummary stubs
+    (r"py:class", r"any"),
+    (r"py:class", r"SamplingGrid"),
+    (r"py:class", r"numpy\.nan"),
+    (r"py:class", r"matplotlib\.norm\.Norm"),
+    (r"py:class", r"matplotlib\.axis\.Axis"),
+    (r"py:class", r"matplotlib\.image\.AxisImage"),
+]
 
 autosummary_generate = True
 autodoc_typehints = "none"
