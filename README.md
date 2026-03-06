@@ -105,6 +105,7 @@ Working in the ECMWF/earthkit ecosystem?           → earthkit-plots    ✓
 Need exact cell boundaries / polygon operations?   → xdggs             ✓
 Standard healpy full-sky (astronomy) workflow?     → healpy            ✓
 ```
+
 ---
 
 ## Implementation notes
@@ -126,4 +127,3 @@ as the lookup table for the raster fill.
 Plotting uses `imshow` with `transform=ccrs.PlateCarree()` and `interpolation="nearest"`.
 For non-global subsets, the extent is set **before** plotting to obtain a smoother result
 with Cartopy.
-
