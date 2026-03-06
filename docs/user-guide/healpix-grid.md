@@ -5,6 +5,12 @@ HEALPix coordinate conversions. The healpix-geo documentation covers everything 
 know about the HEALPix grid: resolution levels, indexing schemes (nested, ring, zuniq),
 ellipsoids, and coordinate conversions.
 
+| Parameter         | Type          | Description                                                                                                                                           |
+| ----------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `level`           | `int`         | HEALPix depth. Must be in **[0, 29]**.                                                                                                                |
+| `indexing_scheme` | `str`         | Cell numbering scheme: `"nested"`, `"ring"`, or `"zuniq"`.                                                                                            |
+| `ellipsoid`       | `str` or dict | Reference ellipsoid: `"sphere"` (default), `"WGS84"`, or a custom dict with `radius` (sphere) or `semimajor_axis` + `inverse_flattening` (ellipsoid). |
+
 ## The HealpixGrid object
 
 In healpix-plotting, you describe your data with a `HealpixGrid` object that wraps
