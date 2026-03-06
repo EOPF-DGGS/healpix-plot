@@ -14,6 +14,7 @@ cartopy = ">=0.25.0,<0.26"
 python = "3.14.*"
 numpy_groupies = ">=0.11.3,<0.12"
 scipy = ">=1.17.0,<2"
+jupyterlab = ">=4.5.5,<5"
 
 [pypi-dependencies]
 healpix-plotting = { path = ".", editable = true }
@@ -25,8 +26,28 @@ affine = "*"
 pytest = "*"
 pytest-cov = "*"
 
+[feature.docs.dependencies]
+sphinx = "*"
+matplotlib = "*"
+pydata-sphinx-theme = "*"
+myst-nb = "*"
+sphinx-autobuild = "*"
+geopandas = "*"
+tabulate = "*"
+markdown = "*"
+pandas = "*"
+pyresample = "*"
+astropy = ">=7.2.0,<8"
+sphinx-design = "*"
+pyproj = "*"
+
 [feature.test.tasks]
-tests = { cmd = "pytest --cov=healpix_plotting", default-environment = "default" }
+tests = { cmd = "pytest --cov=healpix_plotting" }
+
+[feature.docs.tasks]
+build-docs = { cmd = "rm -rf generated/; python -m sphinx -b html -w warnings.log -W -Tn -j auto . _build", cwd = "docs" }
+autobuild-docs = { cmd = "sphinx-autobuild -b html -w warnings.log -W -Tn -j auto . _build", cwd = "docs" }
+build-docs-rtd = { cmd = "python -m sphinx -b html -W -T -j auto . $READTHEDOCS_OUTPUT/html", cwd = "docs" }
 
 [feature.dev.dependencies]
 ipython = "*"
@@ -38,3 +59,4 @@ isort = "*"
 
 [environments]
 default = ["test", "dev", "affine"]
+docs = ["docs"]
