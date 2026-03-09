@@ -188,13 +188,16 @@ class AffineSamplingGrid(SamplingGrid):
 
         _, scale_x, _, _, _, scale_y = self.center_transform.to_gdal()
 
-        xmin = np.clip(np.min(x) - scale_x / 2, 0, 360)
-        xmax = np.clip(np.max(x) + scale_x / 2, 0, 360)
-        ymin = np.clip(np.min(y) - scale_y / 2, -90, 90)
-        ymax = np.clip(np.max(y) + scale_y / 2, -90, 90)
+        (xmin, xmax), (ymin, ymax) = self.center_transform * (
+            np.array([0, self.shape[0]]),
+            np.array([0, self.shape[1]]),
+        )
 
-        extent_x = (xmin, xmax)
-        extent_y = (ymin, ymax)
+        if xmin <= 0 and xmax >= 0:
+            x = (x + 180) % 360 - 180
+
+        extent_x = (float(xmin), float(xmax))
+        extent_y = (float(ymin), float(ymax))
 
         return ConcreteSamplingGrid(x, y, extent_x, extent_y)
 
