@@ -2,7 +2,7 @@
 authors = ["Justus Magin <keewis@posteo.de>"]
 channels = ["conda-forge"]
 name = "healpix-plotting"
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64", "win-64"]
 version = "0.1.0"
 
 [tasks]
@@ -11,9 +11,9 @@ version = "0.1.0"
 matplotlib-base = ">=3.10.8,<4"
 numpy = ">=2.4.2,<3"
 cartopy = ">=0.25.0,<0.26"
-python = "3.14.*"
 numpy_groupies = ">=0.11.3,<0.12"
 scipy = ">=1.17.0,<2"
+jupyterlab = ">=4.5.5,<5"
 
 [pypi-dependencies]
 healpix-plotting = { path = ".", editable = true }
@@ -25,8 +25,35 @@ affine = "*"
 pytest = "*"
 pytest-cov = "*"
 
+[feature.py313.dependencies]
+python = "3.13.*"
+
+[feature.py314.dependencies]
+python = "3.14.*"
+
+[feature.docs.dependencies]
+sphinx = "*"
+matplotlib = "*"
+pydata-sphinx-theme = "*"
+myst-nb = "*"
+sphinx-autobuild = "*"
+geopandas = "*"
+tabulate = "*"
+markdown = "*"
+pandas = "*"
+pyresample = "*"
+astropy = ">=7.2.0,<8"
+sphinx-design = "*"
+pyproj = "*"
+xdggs = "*"
+
 [feature.test.tasks]
-tests = { cmd = "pytest --cov=healpix_plotting", default-environment = "default" }
+tests = { cmd = "pytest --cov=healpix_plotting" }
+
+[feature.docs.tasks]
+build-docs = { cmd = "rm -rf generated/; python -m sphinx -b html -w warnings.log -W -Tn -j auto . _build", cwd = "docs" }
+autobuild-docs = { cmd = "sphinx-autobuild -b html -w warnings.log -W -Tn -j auto . _build", cwd = "docs" }
+build-docs-rtd = { cmd = "python -m sphinx -b html -W -T -j auto . $READTHEDOCS_OUTPUT/html", cwd = "docs" }
 
 [feature.dev.dependencies]
 ipython = "*"
@@ -37,4 +64,5 @@ jupyterlab_code_formatter = "*"
 isort = "*"
 
 [environments]
-default = ["test", "dev", "affine"]
+default = ["test", "dev", "affine", "py314"]
+docs = ["docs", "py313"]
