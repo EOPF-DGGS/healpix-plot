@@ -28,6 +28,7 @@ def plot(
     healpix_grid: HealpixGrid,
     sampling_grid: SamplingGridParameters | SamplingGrid,
     projection: str | ccrs.CRS = "Mollweide",
+    view: tuple[float, float, float, float] | None = None,
     agg: str = "mean",
     interpolation: str = "nearest",
     background_value: float = np.nan,
@@ -57,6 +58,8 @@ def plot(
         The target grid.
     projection : str or cartopy.crs.CRS
         The projection used to construct a new axis. Ignored if ``ax`` is given.
+    view : tuple of float, optional
+        If given, defines the extent of the displayed plot.
     agg : str, default: "mean"
         Aggregation to deduplicate the data.
     interpolation : str, default: "nearest"
@@ -150,10 +153,13 @@ def plot(
 
     if cell_ids.size == 12 * 4**healpix_grid.level:
         ax.set_global()
+    elif view is not None:
+        ax.set_extent(view, crs=ccrs.PlateCarree())
     else:
         # set extent before plotting for a smoother image
         # See https://github.com/SciTools/cartopy/issues/1468
         ax.set_extent(target_grid.extent, crs=ccrs.PlateCarree())
+
     mappable = ax.imshow(
         image,
         extent=target_grid.extent,
