@@ -98,7 +98,7 @@ intersphinx_mapping = {
 # Suppress warnings for unresolvable cross-references (dataclass attributes,
 # external types not covered by intersphinx)
 nitpick_ignore_regex = [
-    (r"py:.*", r"healpix_plotting\..*"),   # generated autosummary stubs
+    (r"py:.*", r"healpix_plotting\..*"),  # generated autosummary stubs
     (r"py:class", r"any"),
     (r"py:class", r"SamplingGrid"),
     (r"py:class", r"numpy\.nan"),
