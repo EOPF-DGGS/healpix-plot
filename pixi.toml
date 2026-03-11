@@ -16,7 +16,7 @@ scipy = ">=1.17.0,<2"
 jupyterlab = ">=4.5.5,<5"
 
 [pypi-dependencies]
-healpix-plotting = { path = ".", editable = true }
+healpix-plot = { path = ".", editable = true }
 
 [feature.affine.dependencies]
 affine = "*"
