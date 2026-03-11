@@ -3,7 +3,7 @@ import datetime as dt
 import pathlib
 import subprocess
 
-project = "healpix-plotting"
+project = "healpix-plot"
 author = f"{project} developers"
 initial_year = "2026"
 year = dt.datetime.now().year

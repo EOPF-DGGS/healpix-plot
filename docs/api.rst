@@ -6,9 +6,8 @@ Main function
 
 .. autosummary::
    :toctree: generated
-   :nosignatures:
 
-   healpix_plotting.plot
+   healpix_plot.plot
 
 Low-level function
 ------------------
@@ -17,18 +16,16 @@ Low-level function
 
 .. autosummary::
    :toctree: generated
-   :nosignatures:
 
-   healpix_plotting.resample
+   healpix_plot.resample
 
 Classes
 -------
 
 .. autosummary::
    :toctree: generated
-   :nosignatures:
 
-   healpix_plotting.HealpixGrid
-   healpix_plotting.sampling_grid.ParametrizedSamplingGrid
-   healpix_plotting.sampling_grid.AffineSamplingGrid
-   healpix_plotting.sampling_grid.ConcreteSamplingGrid
+   healpix_plot.HealpixGrid
+   healpix_plot.sampling_grid.ParametrizedSamplingGrid
+   healpix_plot.sampling_grid.AffineSamplingGrid
+   healpix_plot.sampling_grid.ConcreteSamplingGrid
