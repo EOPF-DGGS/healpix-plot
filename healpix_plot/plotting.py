@@ -6,9 +6,9 @@ import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
 
-from healpix_plotting.healpix import HealpixGrid
-from healpix_plotting.resampling import resample
-from healpix_plotting.sampling_grid import ParametrizedSamplingGrid
+from healpix_plot.healpix import HealpixGrid
+from healpix_plot.resampling import resample
+from healpix_plot.sampling_grid import ParametrizedSamplingGrid
 
 if TYPE_CHECKING:
     from typing import Any, Literal
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from matplotlib.cm import ColorMap
     from matplotlib.norm import Norm
 
-    from healpix_plotting.sampling_grid import SamplingGrid, SamplingGridParameters
+    from healpix_plot.sampling_grid import SamplingGrid, SamplingGridParameters
 
 
 def plot(
@@ -95,12 +95,12 @@ def plot(
 
     Examples
     --------
-    >>> import healpix_plotting
+    >>> import healpix_plot
     >>> import numpy as np
 
     Define the source grid:
 
-    >>> healpix_params = healpix_plotting.HealpixParameters(
+    >>> healpix_params = healpix_plot.HealpixParameters(
     ...     level=4,
     ...     indexing_scheme="nested",
     ... )
@@ -116,7 +116,7 @@ def plot(
 
     Plot the data
 
-    >>> healpix_plotting.plot(
+    >>> healpix_plot.plot(
     ...     cell_ids,
     ...     data,
     ...     sampling_grid={"shape": 1024},

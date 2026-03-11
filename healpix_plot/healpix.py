@@ -8,7 +8,7 @@ import healpix_geo
 if TYPE_CHECKING:
     from typing import Literal
 
-    from healpix_plotting.ellipsoid import EllipsoidLike
+    from healpix_plot.ellipsoid import EllipsoidLike
 
 
 class HealpixGridParameters(TypedDict):

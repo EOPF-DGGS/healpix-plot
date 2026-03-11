@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from affine import Affine
 
-from healpix_plotting import sampling_grid as sg
-from healpix_plotting.healpix import HealpixGrid
+from healpix_plot import sampling_grid as sg
+from healpix_plot.healpix import HealpixGrid
 
 
 @pytest.mark.parametrize(
