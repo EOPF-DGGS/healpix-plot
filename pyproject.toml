@@ -18,13 +18,13 @@ requires = ["setuptools>=80.0", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["healpix_plotting"]
+packages = ["healpix_plot"]
 
 [tool.setuptools_scm]
 fallback_version = "9999"
 
 [tool.coverage.run]
-source = ["healpix_plotting"]
+source = ["healpix_plot"]
 branch = true
 omit = []
 
@@ -68,7 +68,7 @@ extend-safe-fixes = [
 
 
 [tool.ruff.lint.isort]
-known-first-party = ["healpix_plotting"]
+known-first-party = ["healpix_plot"]
 known-third-party = []
 
 [tool.ruff.lint.flake8-tidy-imports]

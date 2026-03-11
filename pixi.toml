@@ -48,7 +48,7 @@ pyproj = "*"
 xdggs = "*"
 
 [feature.test.tasks]
-tests = { cmd = "pytest --cov=healpix_plotting" }
+tests = { cmd = "pytest --cov=healpix_plot" }
 
 [feature.docs.tasks]
 build-docs = { cmd = "rm -rf generated/; python -m sphinx -b html -w warnings.log -W -Tn -j auto . _build", cwd = "docs" }
