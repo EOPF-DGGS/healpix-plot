@@ -9,7 +9,7 @@ from affine import Affine
 if TYPE_CHECKING:
     from typing import Self
 
-    from healpix_plotting.healpix import HealpixGrid
+    from healpix_plot.healpix import HealpixGrid
 
 
 class SamplingGridParameters(TypedDict):

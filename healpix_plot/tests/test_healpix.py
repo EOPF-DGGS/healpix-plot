@@ -1,6 +1,6 @@
 import pytest
 
-from healpix_plotting import healpix
+from healpix_plot import healpix
 
 
 class TestHealpixGrid:
