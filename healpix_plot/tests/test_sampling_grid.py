@@ -2,14 +2,44 @@ import numpy as np
 import pytest
 from affine import Affine
 
-from healpix_plotting import sampling_grid as sg
-from healpix_plotting.healpix import HealpixGrid
+from healpix_plot import sampling_grid as sg
+from healpix_plot.healpix import HealpixGrid
 
 
 @pytest.mark.parametrize(
-    ["shape", "resolution", "center", "expected_resolution", "expected_center"],
+    [
+        "cell_ids",
+        "params",
+        "shape",
+        "resolution",
+        "center",
+        "expected_resolution",
+        "expected_center",
+    ],
     (
         pytest.param(
+            np.arange(4 * 4**3, 5 * 4**3),
+            {"level": 3, "indexing_scheme": "nested", "ellipsoid": "sphere"},
+            (15, 15),
+            None,
+            None,
+            (5.625, 5.0979),
+            (0, 0),
+            id="base_cell4-res-center",
+        ),
+        pytest.param(
+            np.arange(5 * 4**3, 6 * 4**3),
+            {"level": 3, "indexing_scheme": "nested", "ellipsoid": "sphere"},
+            (15, 15),
+            None,
+            None,
+            (5.625, 5.0979),
+            (90, 0),
+            id="base_cell5-res-center",
+        ),
+        pytest.param(
+            None,
+            None,
             (15, 7),
             (0.5, 1.2),
             (9.5, 10.0),
@@ -17,6 +47,8 @@ from healpix_plotting.healpix import HealpixGrid
             (9.5, 10.0),
         ),
         pytest.param(
+            None,
+            None,
             (7, 5),
             None,
             (10.0, 10.0),
@@ -24,6 +56,8 @@ from healpix_plotting.healpix import HealpixGrid
             (10.0, 10.0),
         ),
         pytest.param(
+            None,
+            None,
             (7, 5),
             (0.5, 0.5),
             None,
@@ -33,32 +67,39 @@ from healpix_plotting.healpix import HealpixGrid
     ),
 )
 def test_infer_parameters(
-    shape, resolution, center, expected_resolution, expected_center
+    cell_ids, params, shape, resolution, center, expected_resolution, expected_center
 ):
-    healpix_params = HealpixGrid(level=4, indexing_scheme="nested", ellipsoid="sphere")
-    cell_ids = np.array(
-        [
-            1079,
-            1099,
-            1120,
-            1121,
-            1122,
-            1123,
-            1124,
-            1126,
-            1127,
-            1128,
-            1129,
-            1131,
-            1132,
-            1133,
-            1134,
-            1135,
-            1144,
-            1220,
-        ],
-        dtype="uint64",
-    )
+    if params is None:
+        healpix_params = HealpixGrid(
+            level=4, indexing_scheme="nested", ellipsoid="sphere"
+        )
+    else:
+        healpix_params = HealpixGrid(**params)
+    if cell_ids is None:
+        cell_ids = np.array(
+            [
+                1079,
+                1099,
+                1120,
+                1121,
+                1122,
+                1123,
+                1124,
+                1126,
+                1127,
+                1128,
+                1129,
+                1131,
+                1132,
+                1133,
+                1134,
+                1135,
+                1144,
+                1220,
+            ],
+            dtype="uint64",
+        )
+
     grid = sg.ParametrizedSamplingGrid(
         shape=shape, resolution=resolution, center=center
     )
@@ -136,6 +177,18 @@ class TestParametrizedSamplingGrid:
                     np.meshgrid(
                         0.0 + 1.0 * np.arange(-2, 3),
                         0.0 + 1.0 * np.arange(-2, 3),
+                    ),
+                    axis=0,
+                )[::-1, ...],
+            ),
+            pytest.param(
+                (7, 5),
+                (0.5, 0.5),
+                (180, 0),
+                np.stack(
+                    np.meshgrid(
+                        180 + 0.5 * np.arange(-3, 4),
+                        0.5 * np.arange(-2, 3),
                     ),
                     axis=0,
                 )[::-1, ...],

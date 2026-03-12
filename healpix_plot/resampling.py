@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy_groupies
 
-from healpix_plotting.sampling_grid import ParametrizedSamplingGrid
+from healpix_plot.sampling_grid import ParametrizedSamplingGrid
 
 if TYPE_CHECKING:
     from typing import Literal
 
-    from healpix_plotting.healpix import HealpixGrid
-    from healpix_plotting.sampling_grid import (
+    from healpix_plot.healpix import HealpixGrid
+    from healpix_plot.sampling_grid import (
         ConcreteSamplingGrid,
         SamplingGrid,
         SamplingGridParameters,

@@ -1,4 +1,4 @@
-# healpix-plotting
+# healpix-plot
 
 > **Fast, practical static plots of [HEALPix](https://healpix.sourceforge.io/) data with [matplotlib](https://matplotlib.org/) and [cartopy](https://scitools.org.uk/cartopy/) — with ellipsoidal (WGS84) support for geoscience workflows.**
 

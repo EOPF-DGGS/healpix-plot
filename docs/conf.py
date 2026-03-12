@@ -3,7 +3,7 @@ import datetime as dt
 import pathlib
 import subprocess
 
-project = "healpix-plotting"
+project = "healpix-plot"
 author = f"{project} developers"
 initial_year = "2026"
 year = dt.datetime.now().year
@@ -31,8 +31,8 @@ extensions = [
 ]
 
 extlinks = {
-    "issue": ("https://github.com/EOPF-DGGS/healpix-plotting/issues/%s", "GH%s"),
-    "pull": ("https://github.com/EOPF-DGGS/healpix-plotting/pull/%s", "PR%s"),
+    "issue": ("https://github.com/EOPF-DGGS/healpix-plot/issues/%s", "GH%s"),
+    "pull": ("https://github.com/EOPF-DGGS/healpix-plot/pull/%s", "PR%s"),
 }
 
 myst_enable_extensions = [
@@ -77,7 +77,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/EOPF-DGGS/healpix-plotting",
+            "url": "https://github.com/EOPF-DGGS/healpix-plot",
             "icon": "fa brands fa-square-github",
             "type": "fontawesome",
         },
@@ -98,7 +98,7 @@ intersphinx_mapping = {
 # Suppress warnings for unresolvable cross-references (dataclass attributes,
 # external types not covered by intersphinx)
 nitpick_ignore_regex = [
-    (r"py:.*", r"healpix_plotting\..*"),  # generated autosummary stubs
+    (r"py:.*", r"healpix_plot\..*"),  # generated autosummary stubs
     (r"py:class", r"any"),
     (r"py:class", r"SamplingGrid"),
     (r"py:class", r"numpy\.nan"),
