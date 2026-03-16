@@ -33,8 +33,10 @@ healpix_grid = healpix_plot.HealpixGrid(
     level=3, indexing_scheme="nested", ellipsoid="WGS84"
 )
 
-cell_ids = np.arange(4*4**healpix_grid.level, 5*4**healpix_grid.level, dtype="uint64")
-                           
+cell_ids = np.arange(
+    4 * 4**healpix_grid.level, 5 * 4**healpix_grid.level, dtype="uint64"
+)
+
 lon, lat = healpix_grid.operations.healpix_to_lonlat(
     cell_ids, **healpix_grid.as_keyword_params()
 )
@@ -83,7 +85,9 @@ grid = ParametrizedSamplingGrid.from_bbox(
     shape=512,
 )
 
-cell_ids = np.arange(4*4**healpix_grid.level, 5*4**healpix_grid.level, dtype="uint64")
+cell_ids = np.arange(
+    4 * 4**healpix_grid.level, 5 * 4**healpix_grid.level, dtype="uint64"
+)
 
 
 lon, lat = healpix_grid.operations.healpix_to_lonlat(
@@ -121,7 +125,9 @@ healpix_grid = healpix_plot.HealpixGrid(
     level=6, indexing_scheme="nested", ellipsoid="WGS84"
 )
 
-cell_ids = np.arange(4*4**healpix_grid.level, 5*4**healpix_grid.level, dtype="uint64")
+cell_ids = np.arange(
+    4 * 4**healpix_grid.level, 5 * 4**healpix_grid.level, dtype="uint64"
+)
 
 
 lon, lat = healpix_grid.operations.healpix_to_lonlat(
@@ -166,7 +172,9 @@ healpix_grid = healpix_plot.HealpixGrid(
     level=4, indexing_scheme="nested", ellipsoid="WGS84"
 )
 
-cell_ids = np.arange(4*4**healpix_grid.level, 5*4**healpix_grid.level, dtype="uint64")
+cell_ids = np.arange(
+    4 * 4**healpix_grid.level, 5 * 4**healpix_grid.level, dtype="uint64"
+)
 
 # example data
 lon, lat = healpix_grid.operations.healpix_to_lonlat(
