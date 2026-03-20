@@ -1,429 +1,355 @@
 """
-mollview — projection de Mollweide d'une carte HEALPix
-via healpix-geo pour les conversions de coordonnées.
+mollview.py
+===========
+HEALPix Mollweide and gnomonic visualisation backed by **cartopy**.
 
-Équivalent à healpy.mollview, sans dépendance à healpy.
-Supporte les ordres RING (défaut) et NESTED, ainsi que les ellipsoïdes
-de référence (ex. WGS84) grâce à healpix-geo.
+Replaces ~130 lines of hand-rolled projection math (_mollweide_inverse,
+_mollweide_forward, _make_mollweide_grid, _draw_graticule,
+_draw_graticule_labels) with cartopy's built-in CRS, which gives us:
 
-Dépendances :
-    pip install healpix-geo numpy matplotlib
+  - Correct Mollweide / gnomonic math maintained by cartopy.
+  - Automatic map boundary and clipping.
+  - Gridlines and tick labels via ax.gridlines().
+  - Optional coastlines / features for geoscience use-cases.
+
+The HEALPix side (pixel-lookup) is unchanged: we still build a regular
+lon/lat grid, look up the HEALPix cell for every grid point with
+healpix_geo (vectorised), and hand the resulting 2-D array to
+pcolormesh with transform=PlateCarree().
+
+Dependencies
+------------
+    pip install healpix-geo cartopy numpy matplotlib
+
+Public API
+----------
+  mollview(hpx_map, *, nest, title, cmap, vmin, vmax, rot, ellipsoid,
+           graticule, graticule_step, unit, bgcolor, n_lon, n_lat,
+           norm, bad_color, flip, figsize, colorbar, hold, sub,
+           coastlines, coastline_kwargs)
+
+  mollgnomview(hpx_map, lon_center, lat_center, *, fov_deg, ...)
 """
 
 from __future__ import annotations
 
 import math
+from typing import Optional, Union
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from matplotlib.patches import Ellipse
-from matplotlib.axes import Axes
-from typing import Optional
-
-import healpix_geo 
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import healpix_geo
 
 
 # ---------------------------------------------------------------------------
-# Utilitaire : déduction de depth depuis la taille de la carte
+# Depth inference  (unchanged)
 # ---------------------------------------------------------------------------
 
 def _depth_from_npix(npix: int) -> int:
-    """
-    Déduit la profondeur HEALPix depuis le nombre de pixels.
-
-    npix = 12 * 4**depth  →  depth = log2(sqrt(npix / 12))
-
-    Raises
-    ------
-    ValueError si npix n'est pas une taille HEALPix valide.
-    """
+    """Infer HEALPix depth from map size (npix = 12 · 4**depth)."""
     if npix <= 0 or npix % 12 != 0:
         raise ValueError(
-            f"Taille de carte invalide : {npix}. "
-            "npix doit être un multiple de 12 de la forme 12 * 4**depth."
+            f"Invalid map size: {npix}. "
+            "npix must be a multiple of 12 of the form 12 * 4**depth."
         )
-    nside_sq = npix // 12          # = 4**depth = nside²
+    nside_sq   = npix // 12
     log2_nside = math.log2(nside_sq) / 2.0
-    depth = int(round(log2_nside))
+    depth      = int(round(log2_nside))
     if 12 * (4**depth) != npix:
         raise ValueError(
-            f"Taille de carte invalide : {npix}. "
-            f"La valeur la plus proche serait depth={depth} "
-            f"→ npix={12 * 4**depth}."
+            f"Invalid map size: {npix}. "
+            f"Closest valid size is depth={depth} → npix={12 * 4**depth}."
         )
     return depth
 
 
 # ---------------------------------------------------------------------------
-# Projection de Mollweide — formules directe / inverse
+# Shared rasterisation kernel
 # ---------------------------------------------------------------------------
 
-def _mollweide_inverse(
-    x: np.ndarray, y: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
-    """(x,y) normalisé [-2,2]×[-1,1]  →  (lon_deg, lat_deg)."""
-    sin_theta = np.clip(y, -1.0, 1.0)
-    theta = np.arcsin(sin_theta)
-    two_theta = 2.0 * theta
-    sin_lat = np.clip((two_theta + np.sin(two_theta)) / np.pi, -1.0, 1.0)
-    lat_deg = np.degrees(np.arcsin(sin_lat))
-    cos_theta = np.cos(theta)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        lon_rad = np.where(
-            cos_theta > 1e-12,
-            (x / 2.0) * np.pi / cos_theta,
-            0.0,
-        )
-    return np.degrees(lon_rad), lat_deg
-
-
-def _mollweide_forward(
-    lon_deg: np.ndarray,
-    lat_deg: np.ndarray,
-    max_iter: int = 100,
-    tol: float = 1e-12,
-) -> tuple[np.ndarray, np.ndarray]:
-    """(lon_deg, lat_deg)  →  (x, y) normalisé [-2,2]×[-1,1]."""
-    lat_rad = np.radians(lat_deg)
-    lon_rad = np.radians(lon_deg)
-    target = np.pi * np.sin(lat_rad)
-    theta = lat_rad.copy()
-    for _ in range(max_iter):
-        f = 2.0 * theta + np.sin(2.0 * theta) - target
-        df = 2.0 + 2.0 * np.cos(2.0 * theta)
-        delta = f / np.where(np.abs(df) > 1e-15, df, 1e-15)
-        theta -= delta
-        if np.max(np.abs(delta)) < tol:
-            break
-    return (2.0 / np.pi) * lon_rad * np.cos(theta), np.sin(theta)
-
-
-# ---------------------------------------------------------------------------
-# Grille image → lon/lat
-# ---------------------------------------------------------------------------
-
-def _make_mollweide_grid(
-    width: int, height: int
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _rasterise(
+    hpx_map:   np.ndarray,
+    depth:     int,
+    lon_grid:  np.ndarray,   # (H, W)  degrees, PlateCarree
+    lat_grid:  np.ndarray,   # (H, W)  degrees
+    nest:      bool,
+    ellipsoid: str,
+) -> np.ndarray:
     """
-    Renvoie (lon_grid, lat_grid, inside) pour une image width×height.
-    lon_grid en degrés [-180,180], lat_grid en degrés [-90,90].
-    inside : masque booléen — True si dans l'ellipse de Mollweide.
+    Look up the HEALPix value for every (lon, lat) grid point.
+
+    Returns a (H, W) float64 array; NaN where the map value is NaN.
     """
-    xs = np.linspace(-2.0, 2.0, width)
-    ys = np.linspace(1.0, -1.0, height)   # nord en haut
-    x_grid, y_grid = np.meshgrid(xs, ys)
+    H, W = lon_grid.shape
 
-    inside = (x_grid / 2.0) ** 2 + y_grid ** 2 <= 1.0
-
-    lon_flat = np.zeros(width * height)
-    lat_flat = np.zeros(width * height)
-    idx = inside.ravel()
-    lon_flat[idx], lat_flat[idx] = _mollweide_inverse(
-        x_grid.ravel()[idx], y_grid.ravel()[idx]
-    )
-    return (
-        lon_flat.reshape(height, width),
-        lat_flat.reshape(height, width),
-        inside,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Graticule
-# ---------------------------------------------------------------------------
-
-def _draw_graticule(
-    ax: Axes,
-    graticule_step_deg: float = 30.0,
-    rot: float = 0.0,
-    line_kwargs: Optional[dict] = None,
-) -> None:
-    """Trace méridiens et parallèles en projection Mollweide sur *ax*."""
-    if line_kwargs is None:
-        line_kwargs = dict(color="white", linewidth=0.5, linestyle="--", alpha=0.7)
-
-    step = graticule_step_deg
-    n_pts = 300
-
-    # Méridiens
-    lat_curve = np.linspace(-90.0, 90.0, n_pts)
-    for lon_deg in np.arange(-180.0, 180.0 + 1e-6, step):
-        lon_s = (lon_deg - rot + 180.0) % 360.0 - 180.0
-        x, y = _mollweide_forward(np.full(n_pts, lon_s), lat_curve)
-        ax.plot(x, y, **line_kwargs)
-
-    # Parallèles
-    lon_curve = np.linspace(-180.0, 180.0, n_pts)
-    for lat_deg in np.arange(-90.0 + step, 90.0, step):
-        x, y = _mollweide_forward(lon_curve, np.full(n_pts, lat_deg))
-        ax.plot(x, y, **line_kwargs)
-
-    # Équateur plus épais
-    eq_kw = {**line_kwargs, "linewidth": 0.8, "linestyle": "-"}
-    x_eq, y_eq = _mollweide_forward(lon_curve, np.zeros(n_pts))
-    ax.plot(x_eq, y_eq, **eq_kw)
-
-
-def _draw_graticule_labels(
-    ax: Axes, step: float, rot: float, color: str = "white"
-) -> None:
-    """Annotations lon/lat du graticule."""
-    # Longitudes (bas de l'ellipse)
-    for lon_label in np.arange(-180.0 + step, 180.0, step):
-        lon_s = (lon_label - rot + 180.0) % 360.0 - 180.0
-        x_lbl, _ = _mollweide_forward(
-            np.array([lon_s]), np.array([0.0])
-        )
-        ax.text(
-            x_lbl[0], -1.05,
-            f"{int(lon_label):+d}°" if lon_label != 0 else "0°",
-            ha="center", va="top", fontsize=7, color=color, clip_on=False,
-        )
-    # Latitudes (bord gauche)
-    for lat_label in np.arange(-90.0 + step, 90.0, step):
-        if abs(lat_label) < 1:
-            continue
-        x_l, y_l = _mollweide_forward(
-            np.array([-180.0]), np.array([lat_label])
-        )
-        ax.text(
-            x_l[0] - 0.05, y_l[0],
-            f"{int(lat_label):+d}°",
-            ha="right", va="center", fontsize=7, color=color, clip_on=False,
-        )
-
-
-# ---------------------------------------------------------------------------
-# Fonction principale : mollview
-# ---------------------------------------------------------------------------
-
-def mollview(
-    hpx_map: np.ndarray,
-    *,
-    nest: bool = False,
-    title: str = "",
-    cmap: str | mcolors.Colormap = "viridis",
-    vmin: Optional[float] = None,
-    vmax: Optional[float] = None,
-    rot: float = 0.0,
-    ellipsoid: str = "sphere",
-    graticule: bool = True,
-    graticule_step: float = 30.0,
-    unit: str = "",
-    bgcolor: str = "black",
-    width_px: int = 1600,
-    height_px: int = 800,
-    norm: Optional[mcolors.Normalize] = None,
-    bad_color: str = "gray",
-    flip: str = "astro",
-    figsize: tuple[float, float] = (14, 7),
-    colorbar: bool = True,
-    hold: bool = False,
-    sub: Optional[tuple[int, int, int]] = None,
-) -> None:
-    """
-    Affiche une carte HEALPix en projection de Mollweide.
-
-    Équivalent à ``healpy.mollview``, sans dépendance à healpy.
-    La profondeur HEALPix est déduite automatiquement de la taille de la carte.
-
-    Parameters
-    ----------
-    hpx_map : np.ndarray, shape (12 * 4**depth,)
-        Carte HEALPix. Ordre RING par défaut (comme healpy), ou NESTED si
-        ``nest=True``.
-    nest : bool, optional
-        False (défaut) → carte en ordre RING.
-        True            → carte en ordre NESTED.
-    title : str
-        Titre affiché au-dessus de la carte.
-    cmap : str ou Colormap
-        Palette de couleurs matplotlib. Défaut ``"viridis"``.
-        Recommandé pour CMB : ``"RdBu_r"``.
-    vmin, vmax : float, optional
-        Limites de la colormap. Si None, utilise les percentiles 2/98.
-    rot : float
-        Longitude centrale de la carte en degrés (défaut 0°).
-        Exemple : ``rot=180`` centre la carte sur le méridien 180°.
-    ellipsoid : str
-        Ellipsoïde de référence. Défaut ``"sphere"`` (identique à healpy).
-        Exemples : ``"WGS84"``, ``"GRS80"``.
-    graticule : bool
-        Trace le graticule (méridiens + parallèles). Défaut True.
-    graticule_step : float
-        Pas du graticule en degrés. Défaut 30°.
-    unit : str
-        Unité affichée sous la colorbar.
-    bgcolor : str
-        Couleur de fond hors ellipse. Défaut ``"black"``.
-    width_px, height_px : int
-        Résolution de l'image rasterisée. Défaut 1600 × 800.
-        Augmenter pour des cartes à haute résolution (depth ≥ 8).
-    norm : matplotlib.colors.Normalize, optional
-        Normalisation personnalisée (ex. ``LogNorm``). Prend le dessus sur
-        vmin/vmax si fournie.
-    bad_color : str
-        Couleur pour les valeurs NaN. Défaut ``"gray"``.
-    flip : str
-        ``"astro"`` (est à gauche, convention astronomique, défaut) ou
-        ``"geo"`` (est à droite, convention géographique).
-    figsize : tuple (float, float)
-        Taille de la figure en pouces. Utilisé uniquement si une nouvelle
-        figure est créée (``hold=False`` et ``sub=None``).
-    colorbar : bool
-        Affiche la colorbar horizontale. Défaut True.
-    hold : bool
-        False (défaut) : crée une nouvelle figure, comme healpy.
-        True           : dessine sur la figure/axes courant (``plt.gca()``).
-    sub : tuple (nrows, ncols, idx), optional
-        Positionne la carte dans un subplot de la figure courante.
-        Exemple : ``sub=(2, 3, 4)`` → 2 lignes × 3 colonnes, panneau 4.
-        Si fourni, ``hold`` est ignoré.
-
-    Returns
-    -------
-    None
-        Comme healpy.mollview, la fonction ne retourne rien.
-        Utilisez ``plt.savefig()``, ``plt.show()`` ou ``plt.gcf()`` pour
-        accéder à la figure courante.
-
-    Examples
-    --------
-    >>> import numpy as np, matplotlib.pyplot as plt
-    >>> from healpix_mollview import mollview
-    >>>
-    >>> depth  = 5
-    >>> m_ring = np.random.default_rng(0).standard_normal(12 * 4**depth)
-    >>>
-    >>> # Carte simple — nouvelle figure automatique
-    >>> mollview(m_ring, title="Carte RING", cmap="RdBu_r")
-    >>> plt.show()
-    >>>
-    >>> # Deux cartes côte à côte dans la même figure
-    >>> plt.figure(figsize=(18, 5))
-    >>> mollview(m_ring, title="RING sphere",  sub=(1, 2, 1))
-    >>> mollview(m_ring, title="RING rot=180", sub=(1, 2, 2), rot=180)
-    >>> plt.show()
-    >>>
-    >>> # Carte NESTED, WGS84, centrée sur 180°
-    >>> mollview(m_nested, nest=True, rot=180, ellipsoid="WGS84",
-    ...          title="WGS84 NESTED", cmap="plasma")
-    >>> plt.savefig("out.png", dpi=150, bbox_inches="tight", facecolor="black")
-    """
-    if flip not in ("astro", "geo"):
-        raise ValueError(f"flip doit être 'astro' ou 'geo', pas '{flip}'.")
-
-    hpx_map = np.asarray(hpx_map, dtype=np.float64)
-    depth = _depth_from_npix(hpx_map.size)
-
-    # ------------------------------------------------------------------
-    # 1. Grille image → (lon, lat) en degrés
-    # ------------------------------------------------------------------
-    lon_grid, lat_grid, inside = _make_mollweide_grid(width_px, height_px)
-
-    # ------------------------------------------------------------------
-    # 2. Rotation : décalage de longitude
-    # ------------------------------------------------------------------
-    lon_rotated = (lon_grid + rot + 180.0) % 360.0 - 180.0
-
-    # ------------------------------------------------------------------
-    # 3. lon/lat → indice HEALPix NESTED (healpix-geo)
-    #    puis conversion NESTED → RING si la carte est en ordre RING
-    # ------------------------------------------------------------------
-    idx_flat = inside.ravel()
     if nest:
-        ipix_lookup = healpix_geo.nested.lonlat_to_healpix(
-            lon_rotated.ravel()[idx_flat],
-            lat_grid.ravel()[idx_flat],
-            depth,
-            ellipsoid=ellipsoid,
-        )  # uint64, ordre NESTED
+        ipix = healpix_geo.nested.lonlat_to_healpix(
+            lon_grid.ravel(), lat_grid.ravel(), depth, ellipsoid=ellipsoid,
+        )
     else:
-        ipix_lookup = healpix_geo.ring.lonlat_to_healpix(
-            lon_rotated.ravel()[idx_flat],
-            lat_grid.ravel()[idx_flat],
-            depth,
-            ellipsoid=ellipsoid,
-        )  # uint64, ordre ring
+        ipix = healpix_geo.ring.lonlat_to_healpix(
+            lon_grid.ravel(), lat_grid.ravel(), depth, ellipsoid=ellipsoid,
+        )
 
-    # ------------------------------------------------------------------
-    # 4. Lecture des valeurs dans la carte
-    # ------------------------------------------------------------------
-    data_flat = np.full(width_px * height_px, np.nan)
-    data_flat[idx_flat] = hpx_map[ipix_lookup]
-    data_img = data_flat.reshape(height_px, width_px)
+    return hpx_map[ipix].reshape(H, W)
 
-    # ------------------------------------------------------------------
-    # 5. Normalisation couleur
-    # ------------------------------------------------------------------
-    valid_vals = data_flat[idx_flat]
-    valid_vals = valid_vals[np.isfinite(valid_vals)]
-    if norm is None:
-        if vmin is None:
-            vmin = float(np.percentile(valid_vals, 2)) if len(valid_vals) else 0.0
-        if vmax is None:
-            vmax = float(np.percentile(valid_vals, 98)) if len(valid_vals) else 1.0
-        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
 
-    # ------------------------------------------------------------------
-    # 6. Image RGBA
-    # ------------------------------------------------------------------
-    if isinstance(cmap, str):
-        cmap_obj = plt.get_cmap(cmap).copy()
-    else:
-        cmap_obj = cmap.copy() if hasattr(cmap, "copy") else cmap
-    cmap_obj.set_bad(bad_color, alpha=1.0)
+# ---------------------------------------------------------------------------
+# Axes creation helper
+# ---------------------------------------------------------------------------
 
-    sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap_obj)
-    rgba = sm.to_rgba(data_img, bytes=False)   # (H, W, 4)
+def _make_axes(
+    crs,
+    hold:    bool,
+    sub:     Optional[tuple[int, int, int]],
+    figsize: tuple[float, float],
+    bgcolor: str,
+):
+    """
+    Return (fig, ax) for a cartopy GeoAxes.
 
-    rgba[~inside] = mcolors.to_rgba(bgcolor)   # fond hors ellipse
+    Priority: sub > hold=True > hold=False (new figure).
 
-    if flip == "geo":
-        rgba = rgba[:, ::-1, :]
-
-    # ------------------------------------------------------------------
-    # 7. Sélection / création de l'Axes
-    #
-    #   Priorité : sub  >  hold=True  >  hold=False (nouvelle figure)
-    # ------------------------------------------------------------------
+    Notes
+    -----
+    When hold=True the *current* axes is reused.  The caller is responsible
+    for having created it with the matching CRS — cartopy axes cannot change
+    their projection after creation.  If plt.gca() is not a GeoAxes an
+    informative error will be raised by cartopy at draw time.
+    """
     if sub is not None:
-        nrows, ncols, sidx = sub
-        ax = plt.gcf().add_subplot(nrows, ncols, sidx, facecolor=bgcolor)
-        fig = ax.get_figure()
+        nrows, ncols, idx = sub
+        fig = plt.gcf()
+        ax  = fig.add_subplot(nrows, ncols, idx, projection=crs,
+                              facecolor=bgcolor)
     elif hold:
-        ax = plt.gca()
-        ax.set_facecolor(bgcolor)
+        ax  = plt.gca()
         fig = ax.get_figure()
     else:
         fig = plt.figure(figsize=figsize, facecolor=bgcolor)
-        ax = fig.add_subplot(111, facecolor=bgcolor)
+        ax  = fig.add_subplot(1, 1, 1, projection=crs, facecolor=bgcolor)
 
     fig.patch.set_facecolor(bgcolor)
+    return fig, ax
+
+
+# ---------------------------------------------------------------------------
+# mollview
+# ---------------------------------------------------------------------------
+
+def mollview(
+    hpx_map:          np.ndarray,
+    *,
+    nest:             bool                      = False,
+    title:            str                       = "",
+    cmap:             Union[str, mcolors.Colormap] = "viridis",
+    vmin:             Optional[float]           = None,
+    vmax:             Optional[float]           = None,
+    rot:              float                     = 0.0,
+    ellipsoid:        str                       = "sphere",
+    graticule:        bool                      = True,
+    graticule_step:   float                     = 30.0,
+    unit:             str                       = "",
+    bgcolor:          str                       = "black",
+    # Resolution of the raster grid (replaces width_px / height_px).
+    # n_lon × n_lat points are sampled in PlateCarree space and reprojected
+    # by cartopy — independent of the final figure DPI.
+    n_lon:            int                       = 1800,
+    n_lat:            int                       = 900,
+    norm:             Optional[mcolors.Normalize] = None,
+    bad_color:        str                       = "gray",
+    flip:             str                       = "astro",
+    figsize:          tuple[float, float]       = (14, 7),
+    colorbar:         bool                      = True,
+    hold:             bool                      = False,
+    sub:              Optional[tuple[int,int,int]] = None,
+    # Extras made possible by cartopy
+    coastlines:       bool                      = False,
+    coastline_kwargs: Optional[dict]            = None,
+) -> None:
+    """
+    Display a HEALPix map in the Mollweide equal-area projection.
+
+    Uses cartopy's ``Mollweide`` CRS for all projection math.  No
+    custom Mollweide formulae are needed in this module.
+
+    Parameters
+    ----------
+    hpx_map : np.ndarray, shape (12 · 4**depth,)
+        Input HEALPix map.  RING order by default; pass ``nest=True``
+        for NESTED maps.
+    nest : bool, default False
+        Pixel ordering of the input map.
+    title : str
+        Figure title.
+    cmap : str or Colormap, default "viridis"
+        Matplotlib colormap.
+    vmin, vmax : float or None
+        Colour-scale limits.  Default: 2nd / 98th percentile.
+    rot : float, default 0.0
+        Central longitude in degrees.  Forwarded to
+        ``cartopy.crs.Mollweide(central_longitude=rot)``.
+    ellipsoid : str, default "sphere"
+        Reference ellipsoid for healpix_geo.  Use ``"WGS84"`` for
+        geographic data.
+    graticule : bool, default True
+        Draw meridians and parallels via ``ax.gridlines()``.
+    graticule_step : float, default 30.0
+        Graticule spacing in degrees.
+    unit : str
+        Colorbar label.
+    bgcolor : str, default "black"
+        Figure and axes background colour.
+    n_lon, n_lat : int, default 1800, 900
+        Resolution of the internal lon/lat sampling grid.  Higher values
+        produce sharper maps at the cost of more memory and CPU.
+    norm : Normalize or None
+        Custom matplotlib normalisation (e.g. ``LogNorm()``).
+    bad_color : str, default "gray"
+        Colour for NaN pixels.
+    flip : str, default "astro"
+        ``"astro"`` — east to the left (astronomical convention).
+        ``"geo"``   — east to the right (geographic convention, cartopy default).
+    figsize : (float, float), default (14, 7)
+        Figure size in inches.  Used only when a new figure is created.
+    colorbar : bool, default True
+        Show a horizontal colorbar.
+    hold : bool, default False
+        If True, draw into the current axes (must already be a cartopy
+        GeoAxes with Mollweide projection).
+    sub : (nrows, ncols, idx) or None
+        Subplot position within the current figure.
+    coastlines : bool, default False
+        Overlay Natural Earth coastlines (useful for geographic maps).
+    coastline_kwargs : dict or None
+        Extra kwargs forwarded to ``ax.add_feature(COASTLINE, ...)``.
+
+    Returns
+    -------
+    None  — same behaviour as healpy.mollview.
+    """
+    if flip not in ("astro", "geo"):
+        raise ValueError(f"flip must be 'astro' or 'geo', got {flip!r}.")
+
+    hpx_map = np.asarray(hpx_map, dtype=np.float64)
+    depth   = _depth_from_npix(hpx_map.size)
 
     # ------------------------------------------------------------------
-    # 8. Rendu
+    # 1. Regular lon/lat sampling grid in PlateCarree space
+    #    (replaces _make_mollweide_grid + _mollweide_inverse)
+    #
+    #    For the "astro" flip we reverse the longitude direction so that
+    #    east appears on the left after cartopy reprojects the data.
+    # ------------------------------------------------------------------
+    lons_1d = np.linspace(-180.0, 180.0, n_lon, endpoint=False)
+    lats_1d = np.linspace(-90.0, 90.0, n_lat)
+
+    # Always keep lons monotonically increasing so cartopy doesn't misread
+    # the extent.  The astro flip (east-left) is applied to the data array
+    # AFTER the HEALPix lookup, not to the coordinate axis.
+    lon_grid, lat_grid = np.meshgrid(lons_1d, lats_1d)   # (n_lat, n_lon)
+
+    # ------------------------------------------------------------------
+    # 2. HEALPix lookup — single vectorised call per ordering
+    # ------------------------------------------------------------------
+    data_img = _rasterise(hpx_map, depth, lon_grid, lat_grid, nest, ellipsoid)
+
+    # Astro flip: mirror columns so east is to the left.
+    # We also need to reverse lons_1d so the imshow extent is consistent.
+    if flip == "astro":
+        data_img = data_img[:, ::-1]
+        lons_1d  = lons_1d[::-1].copy()
+
+    # ------------------------------------------------------------------
+    # 3. Colour normalisation
+    # ------------------------------------------------------------------
+    valid = data_img[np.isfinite(data_img)]
+    if norm is None:
+        if vmin is None:
+            vmin = float(np.percentile(valid, 2))  if valid.size else 0.0
+        if vmax is None:
+            vmax = float(np.percentile(valid, 98)) if valid.size else 1.0
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+
+    cmap_obj = plt.get_cmap(cmap).copy() if isinstance(cmap, str) \
+               else (cmap.copy() if hasattr(cmap, "copy") else cmap)
+    cmap_obj.set_bad(bad_color, alpha=1.0)
+    sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap_obj)
+
+    # ------------------------------------------------------------------
+    # 4. Axes  — cartopy Mollweide CRS handles all projection math
+    # ------------------------------------------------------------------
+    crs      = ccrs.Mollweide(central_longitude=rot)
+    plate_cr = ccrs.PlateCarree()
+
+    fig, ax = _make_axes(crs, hold, sub, figsize, bgcolor)
+    ax.set_global()
+
+    # ------------------------------------------------------------------
+    # 5. Plot — imshow is orders of magnitude faster than pcolormesh here.
+    #
+    #    pcolormesh with transform=PlateCarree() forces cartopy to reproject
+    #    every single quad cell (~1.6M for the default grid), making it
+    #    extremely slow.
+    #
+    #    imshow with transform=PlateCarree() and a global extent lets cartopy
+    #    treat the data as a single image warp — one reprojection operation
+    #    for the whole array, regardless of n_lon × n_lat.
+    #
+    #    The extent must be [lon_min, lon_max, lat_min, lat_max] in the
+    #    PlateCarree frame.  We flip lat so that row 0 = south (origin="lower").
     # ------------------------------------------------------------------
     ax.imshow(
-        rgba, extent=[-2, 2, -1, 1], origin="upper",
-        interpolation="nearest", aspect="equal",
+        data_img,
+        origin="lower",
+        extent=[lons_1d[0], lons_1d[-1], lats_1d[0], lats_1d[-1]],
+        transform=plate_cr,
+        cmap=cmap_obj,
+        norm=norm,
+        interpolation="nearest",
+        aspect="auto",
     )
-    ax.add_patch(Ellipse(
-        (0, 0), width=4, height=2,
-        edgecolor="white", facecolor="none", linewidth=1.0, zorder=3,
-    ))
+
+    # ------------------------------------------------------------------
+    # 6. Optional extras — all handled by cartopy, zero custom math
+    # ------------------------------------------------------------------
+    if coastlines:
+        ckw = dict(linewidth=0.6, edgecolor="white") if coastline_kwargs is None \
+              else coastline_kwargs
+        ax.add_feature(cfeature.COASTLINE, **ckw)
+
     if graticule:
-        _draw_graticule(ax, graticule_step_deg=graticule_step, rot=rot)
-        _draw_graticule_labels(ax, step=graticule_step, rot=rot)
+        gl = ax.gridlines(
+            crs=plate_cr,
+            draw_labels=False,
+            linewidth=0.5,
+            color="white",
+            linestyle="--",
+            alpha=0.7,
+            xlocs=np.arange(-180, 181, graticule_step),
+            ylocs=np.arange(-90,   91, graticule_step),
+        )
+        # Equator slightly thicker
+        ax.gridlines(
+            crs=plate_cr,
+            draw_labels=False,
+            linewidth=0.8,
+            color="white",
+            linestyle="-",
+            alpha=0.7,
+            xlocs=[],
+            ylocs=[0],
+        )
 
     if title:
         ax.set_title(title, color="white", fontsize=11, pad=6)
 
-    ax.set_xlim(-2.05, 2.05)
-    ax.set_ylim(-1.12, 1.05)
-    ax.axis("off")
-
+    # ------------------------------------------------------------------
+    # 7. Colorbar
+    # ------------------------------------------------------------------
     if colorbar:
         cbar = fig.colorbar(
             sm, ax=ax,
@@ -435,112 +361,109 @@ def mollview(
         if unit:
             cbar.set_label(unit, color="white", fontsize=9)
 
-    # Pas de return — comme healpy.mollview
+    # No return — same behaviour as healpy.mollview
 
 
 # ---------------------------------------------------------------------------
-# mollgnomview — zoom gnomonique local
+# mollgnomview  — gnomonic zoom
 # ---------------------------------------------------------------------------
 
 def mollgnomview(
-    hpx_map: np.ndarray,
+    hpx_map:    np.ndarray,
     lon_center: float,
     lat_center: float,
     *,
-    nest: bool = False,
-    fov_deg: float = 10.0,
-    title: str = "",
-    cmap: str | mcolors.Colormap = "viridis",
-    vmin: Optional[float] = None,
-    vmax: Optional[float] = None,
-    ellipsoid: str = "sphere",
-    unit: str = "",
-    width_px: int = 800,
-    height_px: int = 800,
-    figsize: tuple[float, float] = (7, 7),
-    colorbar: bool = True,
-    hold: bool = False,
-    sub: Optional[tuple[int, int, int]] = None,
+    nest:       bool                         = False,
+    fov_deg:    float                        = 10.0,
+    title:      str                          = "",
+    cmap:       Union[str, mcolors.Colormap] = "viridis",
+    vmin:       Optional[float]              = None,
+    vmax:       Optional[float]              = None,
+    ellipsoid:  str                          = "sphere",
+    unit:       str                          = "",
+    n_lon:      int                          = 800,
+    n_lat:      int                          = 800,
+    figsize:    tuple[float, float]          = (7, 7),
+    colorbar:   bool                         = True,
+    hold:       bool                         = False,
+    sub:        Optional[tuple[int,int,int]] = None,
+    coastlines: bool                         = False,
+    coastline_kwargs: Optional[dict]         = None,
 ) -> None:
     """
-    Zoom local en projection gnomonique sur une carte HEALPix.
+    Local zoom in the gnomonic (tangent-plane) projection.
 
-    Équivalent à ``healpy.gnomview``. La profondeur est déduite de la taille
-    de la carte. Même convention hold/sub que mollview.
+    Uses ``cartopy.crs.Gnomonic`` — replaces the hand-rolled deprojection
+    that was in the original ``mollgnomview``.
 
     Parameters
     ----------
     hpx_map : np.ndarray
-        Carte HEALPix (RING par défaut, NESTED si ``nest=True``).
+        HEALPix map (RING by default; NESTED if ``nest=True``).
     lon_center, lat_center : float
-        Centre de la vue en degrés.
-    nest, fov_deg, title, cmap, vmin, vmax, ellipsoid, unit,
-    width_px, height_px, figsize, colorbar, hold, sub :
-        Voir ``mollview``.
+        Centre of the view in degrees.
+    fov_deg : float, default 10.0
+        Total field of view (square side) in degrees.
+    n_lon, n_lat : int, default 800
+        Resolution of the internal sampling grid.
+    All other parameters : see ``mollview``.
     """
     hpx_map = np.asarray(hpx_map, dtype=np.float64)
-    depth = _depth_from_npix(hpx_map.size)
+    depth   = _depth_from_npix(hpx_map.size)
 
-    half = np.tan(np.radians(fov_deg / 2.0))
-    xs = np.linspace(-half, half, width_px)
-    ys = np.linspace(half, -half, height_px)
-    xg, yg = np.meshgrid(xs, ys)
+    # Build a lon/lat grid that covers the requested FOV.
+    # We use PlateCarree for the grid and let cartopy reproject to Gnomonic.
+    half    = fov_deg / 2.0
+    lons_1d = np.linspace(lon_center - half, lon_center + half, n_lon)
+    lats_1d = np.linspace(lat_center - half, lat_center + half, n_lat)
+    lon_grid, lat_grid = np.meshgrid(lons_1d, lats_1d)
 
-    lon_c = np.radians(lon_center)
-    lat_c = np.radians(lat_center)
-    rho   = np.sqrt(xg**2 + yg**2)
-    c     = np.arctan(rho)
-    cos_c, sin_c = np.cos(c), np.sin(c)
+    data_img = _rasterise(hpx_map, depth, lon_grid, lat_grid, nest, ellipsoid)
 
-    lat_rad = np.arcsin(
-        cos_c * np.sin(lat_c)
-        + np.where(rho > 1e-12, yg * sin_c * np.cos(lat_c) / rho, 0.0)
-    )
-    lon_rad = lon_c + np.arctan2(
-        xg * sin_c,
-        rho * np.cos(lat_c) * cos_c - yg * np.sin(lat_c) * sin_c,
-    )
-
-    ipix_nested = lonlat_to_healpix(
-        np.degrees(lon_rad).ravel(),
-        np.degrees(lat_rad).ravel(),
-        depth, ellipsoid=ellipsoid,
-    )
-    ipix_lookup = ipix_nested if nest else _nested_to_ring(ipix_nested, depth)
-    data_img = hpx_map[ipix_lookup].reshape(height_px, width_px)
-
-    valid_vals = data_img[np.isfinite(data_img)]
+    valid = data_img[np.isfinite(data_img)]
     if vmin is None:
-        vmin = float(np.percentile(valid_vals, 2)) if len(valid_vals) else 0.0
+        vmin = float(np.percentile(valid, 2))  if valid.size else 0.0
     if vmax is None:
-        vmax = float(np.percentile(valid_vals, 98)) if len(valid_vals) else 1.0
+        vmax = float(np.percentile(valid, 98)) if valid.size else 1.0
     norm_obj = mcolors.Normalize(vmin=vmin, vmax=vmax)
 
-    if sub is not None:
-        nrows, ncols, sidx = sub
-        ax = plt.gcf().add_subplot(nrows, ncols, sidx, facecolor="black")
-        fig = ax.get_figure()
-    elif hold:
-        ax = plt.gca()
-        ax.set_facecolor("black")
-        fig = ax.get_figure()
-    else:
-        fig, ax = plt.subplots(figsize=figsize, facecolor="black")
+    cmap_obj = plt.get_cmap(cmap).copy() if isinstance(cmap, str) \
+               else (cmap.copy() if hasattr(cmap, "copy") else cmap)
+    cmap_obj.set_bad("gray", alpha=1.0)
 
-    fig.patch.set_facecolor("black")
-    im = ax.imshow(
-        data_img, origin="upper", cmap=cmap, norm=norm_obj,
-        extent=[-fov_deg / 2, fov_deg / 2, -fov_deg / 2, fov_deg / 2],
-        interpolation="nearest",
+    crs      = ccrs.Gnomonic(central_latitude=lat_center,
+                              central_longitude=lon_center)
+    plate_cr = ccrs.PlateCarree()
+
+    fig, ax  = _make_axes(crs, hold, sub, figsize, "black")
+    ax.set_extent(
+        [lon_center - half, lon_center + half,
+         lat_center - half, lat_center + half],
+        crs=plate_cr,
     )
-    ax.set_facecolor("black")
-    ax.tick_params(colors="white")
-    for spine in ax.spines.values():
-        spine.set_edgecolor("white")
-    ax.set_xlabel("Δlon [deg]", color="white")
-    ax.set_ylabel("Δlat [deg]", color="white")
+
+    im = ax.imshow(
+        data_img,
+        origin="lower",
+        extent=[lons_1d[0], lons_1d[-1], lats_1d[0], lats_1d[-1]],
+        transform=plate_cr,
+        cmap=cmap_obj,
+        norm=norm_obj,
+        interpolation="nearest",
+        aspect="auto",
+    )
+
+    if coastlines:
+        ckw = dict(linewidth=0.6, edgecolor="white") if coastline_kwargs is None \
+              else coastline_kwargs
+        ax.add_feature(cfeature.COASTLINE, **ckw)
+
+    ax.gridlines(crs=plate_cr, draw_labels=True,
+                 linewidth=0.5, color="gray", linestyle="--", alpha=0.6)
+
     if title:
         ax.set_title(title, color="white", fontsize=11)
+
     if colorbar:
         cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         cbar.ax.tick_params(colors="white")
@@ -548,3 +471,34 @@ def mollgnomview(
         if unit:
             cbar.set_label(unit, color="white")
 
+
+# ---------------------------------------------------------------------------
+# Quick smoke-test
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    import matplotlib
+    matplotlib.use("Agg")
+
+    depth = 5
+    rng   = np.random.default_rng(42)
+    m     = rng.standard_normal(12 * 4**depth)
+    m[rng.integers(0, m.size, 200)] = np.nan
+
+    # Full-sky Mollweide
+    mollview(m, title="healpix-geo + cartopy Mollweide", cmap="RdBu_r",
+             unit="[σ]", coastlines=False)
+    plt.savefig("/mnt/user-data/outputs/mollview_cartopy.png",
+                dpi=150, bbox_inches="tight", facecolor="black")
+    plt.close()
+
+    # Side-by-side via sub=
+    plt.figure(figsize=(18, 5), facecolor="black")
+    mollview(m, sub=(1, 2, 1), title="sphere  rot=0",   cmap="plasma")
+    mollview(m, sub=(1, 2, 2), title="sphere  rot=180", cmap="plasma", rot=180)
+    plt.tight_layout()
+    plt.savefig("/mnt/user-data/outputs/mollview_cartopy_sub.png",
+                dpi=150, bbox_inches="tight", facecolor="black")
+    plt.close()
+
+    print("Done — outputs written to /mnt/user-data/outputs/")
