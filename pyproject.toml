@@ -1,10 +1,11 @@
 [project]
 name = "healpix-plot"
-requires-python = ">= 3.9"
+requires-python = ">= 3.11"
+readme = "README.md"
 license = { text = "Apache-2.0" }
 dependencies = [
   "healpix-geo",
-  "numpy",
+  "numpy>=2.3",
   "matplotlib",
   "cartopy",
   "numpy_groupies",
