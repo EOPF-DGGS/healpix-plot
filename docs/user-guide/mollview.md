@@ -33,9 +33,9 @@
 
 `mollview.py` provides two visualisation functions for HEALPix sky/sphere maps:
 
-| Function | Projection | healpy equivalent |
-|---|---|---|
-| `mollview` | Mollweide (equal-area, full sky) | `healpy.mollview` |
+| Function       | Projection                           | healpy equivalent |
+| -------------- | ------------------------------------ | ----------------- |
+| `mollview`     | Mollweide (equal-area, full sky)     | `healpy.mollview` |
 | `mollgnomview` | Gnomonic (tangent-plane, local zoom) | `healpy.gnomview` |
 
 Key differences from healpy:
@@ -51,8 +51,8 @@ Key differences from healpy:
 - **`hold` and `sub` parameters** control where the plot appears, mirroring
   healpy's interface.
 - **Two rendering backends**, selected automatically:
-  - *Fast path* (default): pure matplotlib, no cartopy required, ~70 ms.
-  - *Cartopy path*: activated by `coastlines=True`, ~500 ms.
+  - _Fast path_ (default): pure matplotlib, no cartopy required, ~70 ms.
+  - _Cartopy path_: activated by `coastlines=True`, ~500 ms.
 
 ---
 
@@ -145,38 +145,38 @@ Renders a HEALPix map in the **Mollweide equal-area projection** (full sky).
 
 The rendering backend is chosen **automatically**:
 
-| `coastlines` | Backend | cartopy required | Typical time |
-|---|---|---|---|
-| `False` (default) | Pure matplotlib | No | ~70 ms |
-| `True` | Cartopy | Yes | ~500 ms |
+| `coastlines`      | Backend         | cartopy required | Typical time |
+| ----------------- | --------------- | ---------------- | ------------ |
+| `False` (default) | Pure matplotlib | No               | ~70 ms       |
+| `True`            | Cartopy         | Yes              | ~500 ms      |
 
 #### Parameters
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `hpx_map` | `np.ndarray`, shape `(12·4^depth,)` | — | Input HEALPix map. RING order by default; use `nest=True` for NESTED. |
-| `nest` | `bool` | `False` | Pixel ordering. `False` = RING (healpy default), `True` = NESTED. |
-| `title` | `str` | `""` | Title displayed above the map. |
-| `cmap` | `str` or `Colormap` | `"viridis"` | Matplotlib colormap. `"RdBu_r"` is recommended for CMB/temperature maps. |
-| `vmin` | `float` or `None` | `None` | Lower bound of the colour scale. Defaults to the 2nd percentile of finite values. |
-| `vmax` | `float` or `None` | `None` | Upper bound of the colour scale. Defaults to the 98th percentile of finite values. |
-| `rot` | `float` | `0.0` | Central longitude of the map in degrees. `rot=180` centres on the anti-meridian. |
-| `ellipsoid` | `str` | `"sphere"` | Reference ellipsoid for healpix-geo. `"sphere"` gives results identical to healpy. Other values: `"WGS84"`, `"GRS80"`. |
-| `graticule` | `bool` | `True` | Draw meridians and parallels. |
-| `graticule_step` | `float` | `30.0` | Spacing of graticule lines in degrees. |
-| `unit` | `str` | `""` | Unit string shown below the colorbar. |
-| `bgcolor` | `str` | `"black"` | Background colour outside the Mollweide ellipse. |
-| `n_lon` | `int` | `1800` | Number of sample columns in the internal raster grid. Increase for high-depth maps (depth >= 8). |
-| `n_lat` | `int` | `900` | Number of sample rows in the internal raster grid. |
-| `norm` | `Normalize` or `None` | `None` | Custom matplotlib normalisation (e.g. `LogNorm()`). Overrides `vmin`/`vmax`. |
-| `bad_color` | `str` | `"gray"` | Colour for `NaN` values. |
-| `flip` | `str` | `"geo"` | East/west convention. `"geo"`: east to the right (default). `"astro"`: east to the left (astronomical convention). |
-| `figsize` | `(float, float)` | `(14, 7)` | Figure size in inches. Only used when a new figure is created. |
-| `colorbar` | `bool` | `True` | Show a horizontal colorbar below the map. |
-| `hold` | `bool` | `False` | If `True`, draw into the current axes. Ignored when `sub` is provided. |
-| `sub` | `(int, int, int)` or `None` | `None` | `(nrows, ncols, index)` subplot position. Overrides `hold`. |
-| `coastlines` | `bool` | `False` | Overlay Natural Earth coastlines. Activates the cartopy backend — cartopy must be installed. |
-| `coastline_kwargs` | `dict` or `None` | `None` | Extra kwargs forwarded to `ax.add_feature(COASTLINE, ...)`. Only used when `coastlines=True`. Example: `{"linewidth": 0.8, "edgecolor": "cyan"}`. |
+| Parameter          | Type                                | Default     | Description                                                                                                                                       |
+| ------------------ | ----------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hpx_map`          | `np.ndarray`, shape `(12·4^depth,)` | —           | Input HEALPix map. RING order by default; use `nest=True` for NESTED.                                                                             |
+| `nest`             | `bool`                              | `False`     | Pixel ordering. `False` = RING (healpy default), `True` = NESTED.                                                                                 |
+| `title`            | `str`                               | `""`        | Title displayed above the map.                                                                                                                    |
+| `cmap`             | `str` or `Colormap`                 | `"viridis"` | Matplotlib colormap. `"RdBu_r"` is recommended for CMB/temperature maps.                                                                          |
+| `vmin`             | `float` or `None`                   | `None`      | Lower bound of the colour scale. Defaults to the 2nd percentile of finite values.                                                                 |
+| `vmax`             | `float` or `None`                   | `None`      | Upper bound of the colour scale. Defaults to the 98th percentile of finite values.                                                                |
+| `rot`              | `float`                             | `0.0`       | Central longitude of the map in degrees. `rot=180` centres on the anti-meridian.                                                                  |
+| `ellipsoid`        | `str`                               | `"sphere"`  | Reference ellipsoid for healpix-geo. `"sphere"` gives results identical to healpy. Other values: `"WGS84"`, `"GRS80"`.                            |
+| `graticule`        | `bool`                              | `True`      | Draw meridians and parallels.                                                                                                                     |
+| `graticule_step`   | `float`                             | `30.0`      | Spacing of graticule lines in degrees.                                                                                                            |
+| `unit`             | `str`                               | `""`        | Unit string shown below the colorbar.                                                                                                             |
+| `bgcolor`          | `str`                               | `"black"`   | Background colour outside the Mollweide ellipse.                                                                                                  |
+| `n_lon`            | `int`                               | `1800`      | Number of sample columns in the internal raster grid. Increase for high-depth maps (depth >= 8).                                                  |
+| `n_lat`            | `int`                               | `900`       | Number of sample rows in the internal raster grid.                                                                                                |
+| `norm`             | `Normalize` or `None`               | `None`      | Custom matplotlib normalisation (e.g. `LogNorm()`). Overrides `vmin`/`vmax`.                                                                      |
+| `bad_color`        | `str`                               | `"gray"`    | Colour for `NaN` values.                                                                                                                          |
+| `flip`             | `str`                               | `"geo"`     | East/west convention. `"geo"`: east to the right (default). `"astro"`: east to the left (astronomical convention).                                |
+| `figsize`          | `(float, float)`                    | `(14, 7)`   | Figure size in inches. Only used when a new figure is created.                                                                                    |
+| `colorbar`         | `bool`                              | `True`      | Show a horizontal colorbar below the map.                                                                                                         |
+| `hold`             | `bool`                              | `False`     | If `True`, draw into the current axes. Ignored when `sub` is provided.                                                                            |
+| `sub`              | `(int, int, int)` or `None`         | `None`      | `(nrows, ncols, index)` subplot position. Overrides `hold`.                                                                                       |
+| `coastlines`       | `bool`                              | `False`     | Overlay Natural Earth coastlines. Activates the cartopy backend — cartopy must be installed.                                                      |
+| `coastline_kwargs` | `dict` or `None`                    | `None`      | Extra kwargs forwarded to `ax.add_feature(COASTLINE, ...)`. Only used when `coastlines=True`. Example: `{"linewidth": 0.8, "edgecolor": "cyan"}`. |
 
 #### Returns
 
@@ -184,10 +184,10 @@ The rendering backend is chosen **automatically**:
 
 #### Raises
 
-| Exception | Condition |
-|---|---|
-| `ValueError` | `hpx_map.size` is not of the form `12·4^depth`. |
-| `ValueError` | `flip` is not `"astro"` or `"geo"`. |
+| Exception     | Condition                                       |
+| ------------- | ----------------------------------------------- |
+| `ValueError`  | `hpx_map.size` is not of the form `12·4^depth`. |
+| `ValueError`  | `flip` is not `"astro"` or `"geo"`.             |
 | `ImportError` | `coastlines=True` but cartopy is not installed. |
 
 ---
@@ -227,11 +227,11 @@ uses the fast matplotlib path; `coastlines=True` activates cartopy.
 
 #### Parameters specific to `mollgnomview`
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `lon_center` | `float` | — | Longitude of the view centre in degrees. |
-| `lat_center` | `float` | — | Latitude of the view centre in degrees. |
-| `fov_deg` | `float` | `10.0` | Total field of view (square side) in degrees. |
+| Parameter    | Type    | Default | Description                                   |
+| ------------ | ------- | ------- | --------------------------------------------- |
+| `lon_center` | `float` | —       | Longitude of the view centre in degrees.      |
+| `lat_center` | `float` | —       | Latitude of the view centre in degrees.       |
+| `fov_deg`    | `float` | `10.0`  | Total field of view (square side) in degrees. |
 
 All other parameters (`nest`, `cmap`, `vmin`, `vmax`, `ellipsoid`, `unit`,
 `n_lon`, `n_lat`, `figsize`, `colorbar`, `hold`, `sub`, `coastlines`,
@@ -298,10 +298,10 @@ plt.show()
 
 HEALPix maps can be stored in two pixel orderings:
 
-| Ordering | Description | Default in |
-|---|---|---|
-| **RING** | Pixels ordered in iso-latitude rings, west to east | `healpy`, this module |
-| **NESTED** | Pixels ordered along a space-filling (Z-order) curve | `healpix-geo` |
+| Ordering   | Description                                          | Default in            |
+| ---------- | ---------------------------------------------------- | --------------------- |
+| **RING**   | Pixels ordered in iso-latitude rings, west to east   | `healpy`, this module |
+| **NESTED** | Pixels ordered along a space-filling (Z-order) curve | `healpix-geo`         |
 
 This module always uses RING order by default (`nest=False`), matching
 `healpy.mollview`.
@@ -456,42 +456,42 @@ PlateCarree space and uses a `Gnomonic` GeoAxes, for the same reason as
 
 ## 10. Internal helpers
 
-| Function | Signature | Description |
-|---|---|---|
-| `_depth_from_npix` | `(npix) → int` | Infers HEALPix depth. Raises `ValueError` for invalid sizes. |
-| `_mollweide_inverse` | `(x, y, central_lon_rad) → (lon_deg, lat_deg, valid)` | Analytic inverse Mollweide. Returns a boolean mask for points inside the ellipse. |
-| `_mollweide_forward` | `(lon_deg, lat_deg, central_lon_rad) → (x, y)` | Forward Mollweide via Newton iteration. Used for graticule drawing. |
-| `_gnomonic_inverse` | `(x, y, lon0_deg, lat0_deg) → (lon_deg, lat_deg)` | Inverse gnomonic projection. `x`, `y` in degrees of arc. |
-| `_rasterise` | `(hpx_map, depth, lon_grid, lat_grid, valid, nest, ellipsoid) → ndarray` | HEALPix lookup for valid grid points. Returns `(H, W)` float64 with NaN outside the mask. |
-| `_build_cmap` | `(cmap, bad_color) → Colormap` | Builds the colormap object and sets the bad-value colour. |
-| `_build_norm` | `(data_img, vmin, vmax, norm) → Normalize` | Builds the normalisation object (2nd/98th percentile defaults). |
-| `_add_colorbar` | `(fig, ax, norm, cmap_obj, unit, text_color)` | Adds a horizontal colorbar. |
-| `_make_axes_plain` | `(hold, sub, figsize, bgcolor) → (fig, ax)` | Creates a plain `Axes` (fast path). |
-| `_make_axes_geo` | `(crs, hold, sub, figsize, bgcolor) → (fig, ax)` | Creates a cartopy `GeoAxes` (cartopy path). |
-| `_draw_graticule_moll` | `(ax, step_deg, central_lon_rad, ...)` | Pre-projected graticule on a plain Axes (fast path). |
-| `_draw_graticule_on_geoaxes` | `(ax, step_deg, central_lon_rad, ...)` | Pre-projected graticule on a GeoAxes (cartopy path, avoids `ax.gridlines()`). |
-| `_finalize_moll_axes` | `(ax)` | Adds the oval boundary, clips the image to the ellipse, and sets axis limits. |
-| `_require_cartopy` | `() → (ccrs, cfeature)` | Lazy cartopy import with a clear error message if not installed. |
+| Function                     | Signature                                                                | Description                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `_depth_from_npix`           | `(npix) → int`                                                           | Infers HEALPix depth. Raises `ValueError` for invalid sizes.                              |
+| `_mollweide_inverse`         | `(x, y, central_lon_rad) → (lon_deg, lat_deg, valid)`                    | Analytic inverse Mollweide. Returns a boolean mask for points inside the ellipse.         |
+| `_mollweide_forward`         | `(lon_deg, lat_deg, central_lon_rad) → (x, y)`                           | Forward Mollweide via Newton iteration. Used for graticule drawing.                       |
+| `_gnomonic_inverse`          | `(x, y, lon0_deg, lat0_deg) → (lon_deg, lat_deg)`                        | Inverse gnomonic projection. `x`, `y` in degrees of arc.                                  |
+| `_rasterise`                 | `(hpx_map, depth, lon_grid, lat_grid, valid, nest, ellipsoid) → ndarray` | HEALPix lookup for valid grid points. Returns `(H, W)` float64 with NaN outside the mask. |
+| `_build_cmap`                | `(cmap, bad_color) → Colormap`                                           | Builds the colormap object and sets the bad-value colour.                                 |
+| `_build_norm`                | `(data_img, vmin, vmax, norm) → Normalize`                               | Builds the normalisation object (2nd/98th percentile defaults).                           |
+| `_add_colorbar`              | `(fig, ax, norm, cmap_obj, unit, text_color)`                            | Adds a horizontal colorbar.                                                               |
+| `_make_axes_plain`           | `(hold, sub, figsize, bgcolor) → (fig, ax)`                              | Creates a plain `Axes` (fast path).                                                       |
+| `_make_axes_geo`             | `(crs, hold, sub, figsize, bgcolor) → (fig, ax)`                         | Creates a cartopy `GeoAxes` (cartopy path).                                               |
+| `_draw_graticule_moll`       | `(ax, step_deg, central_lon_rad, ...)`                                   | Pre-projected graticule on a plain Axes (fast path).                                      |
+| `_draw_graticule_on_geoaxes` | `(ax, step_deg, central_lon_rad, ...)`                                   | Pre-projected graticule on a GeoAxes (cartopy path, avoids `ax.gridlines()`).             |
+| `_finalize_moll_axes`        | `(ax)`                                                                   | Adds the oval boundary, clips the image to the ellipse, and sets axis limits.             |
+| `_require_cartopy`           | `() → (ccrs, cfeature)`                                                  | Lazy cartopy import with a clear error message if not installed.                          |
 
 ---
 
 ## 11. Comparison with `healpy`
 
-| Feature | `healpy.mollview` | `mollview` (this module) |
-|---|---|---|
-| Pixel ordering | RING by default | RING by default (`nest=False`) |
-| Depth/nside | inferred from map length | inferred from map length |
-| Rotation | `rot=(lon, lat, psi)` 3-tuple | `rot=lon_deg` scalar |
-| Ellipsoid | sphere only | `"sphere"`, `"WGS84"`, `"GRS80"`, … |
-| Image resolution | fixed internal grid | configurable: `n_lon`, `n_lat` |
-| East/west default | `"astro"` (east left) | `"geo"` (east right) |
-| Return value | `None` | `None` |
-| `hold` / `sub` | supported | supported |
-| Coastlines | not supported | `coastlines=True` (requires cartopy) |
-| healpy dependency | required | **not required** |
-| cartopy dependency | not required | optional (only for `coastlines=True`) |
-| NaN handling | `bad_color` | `bad_color` |
-| Colour normalisation | `min`/`max` | percentiles 2/98 by default; custom `norm` supported |
+| Feature              | `healpy.mollview`             | `mollview` (this module)                             |
+| -------------------- | ----------------------------- | ---------------------------------------------------- |
+| Pixel ordering       | RING by default               | RING by default (`nest=False`)                       |
+| Depth/nside          | inferred from map length      | inferred from map length                             |
+| Rotation             | `rot=(lon, lat, psi)` 3-tuple | `rot=lon_deg` scalar                                 |
+| Ellipsoid            | sphere only                   | `"sphere"`, `"WGS84"`, `"GRS80"`, …                  |
+| Image resolution     | fixed internal grid           | configurable: `n_lon`, `n_lat`                       |
+| East/west default    | `"astro"` (east left)         | `"geo"` (east right)                                 |
+| Return value         | `None`                        | `None`                                               |
+| `hold` / `sub`       | supported                     | supported                                            |
+| Coastlines           | not supported                 | `coastlines=True` (requires cartopy)                 |
+| healpy dependency    | required                      | **not required**                                     |
+| cartopy dependency   | not required                  | optional (only for `coastlines=True`)                |
+| NaN handling         | `bad_color`                   | `bad_color`                                          |
+| Colour normalisation | `min`/`max`                   | percentiles 2/98 by default; custom `norm` supported |
 
 ### Migration from healpy
 
