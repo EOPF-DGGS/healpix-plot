@@ -138,7 +138,7 @@ mollview(
     sub              = None,
     coastlines       = False,
     coastline_kwargs = None,
-) -> None
+)
 ```
 
 Renders a HEALPix map in the **Mollweide equal-area projection** (full sky).
@@ -216,7 +216,7 @@ mollgnomview(
     sub              = None,
     coastlines       = False,
     coastline_kwargs = None,
-) -> None
+)
 ```
 
 Renders a local zoom in the **gnomonic (tangent-plane) projection**.

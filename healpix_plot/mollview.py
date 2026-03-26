@@ -53,7 +53,6 @@ Dependencies
 from __future__ import annotations
 
 import math
-from typing import Optional, Union
 
 import healpix_geo
 import matplotlib.colors as mcolors
