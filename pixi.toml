@@ -3,7 +3,7 @@ authors = ["Justus Magin <keewis@posteo.de>"]
 channels = ["conda-forge"]
 name = "healpix-plot"
 platforms = ["linux-64", "osx-arm64", "win-64"]
-version = "0.1.0"
+version = "2026.5.1"
 
 [tasks]
 
