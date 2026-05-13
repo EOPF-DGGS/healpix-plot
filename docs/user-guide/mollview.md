@@ -43,7 +43,7 @@
 Key differences from healpy:
 
 - **No healpy dependency.** All HEALPix geometry is handled by
-  [`healpix-geo`](https://github.com/EOPF-DGGS/healpix-geo).
+  [`healpix-geo`](https://github.com/GRID4EARTH/healpix-geo).
 - **Depth is inferred automatically** from the map size — you never pass it
   explicitly.
 - **RING order by default**, like healpy. Pass `nest=True` for NESTED maps.
